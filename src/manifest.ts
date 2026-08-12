@@ -7,6 +7,7 @@
 // ⚠️ The SHAPES come from @daycore/core; the CONTENT below is 汀's own. Its
 // token space and family id are its identity — four products do not share those,
 // and a shared constant would make adding a frontend an edit to everybody.
+import { SPEAKS } from '@daycore/core';
 import type { KindSpec, Manifest, TokenSpec } from '@daycore/core';
 
 // ⚠️ FAMILY_ID is the theme-compatibility group, not the build.
@@ -25,7 +26,10 @@ export const DISPLAY_NAME = '汀 · 此刻';
 // Bumped when 汀 starts *requiring* something new — not when it starts using
 // something new behind a capability check. The difference matters: the first
 // locks out deployments, the second degrades on them.
-export const MIN_API = 1;
+// ⚠️ 从 core 取，不再各写一份。四份 `= 1` 曾经同时是错的：core 的 paths.ts
+// 硬写 /api/v2，所以对着 v1 后端每个请求都 404，而这个数字说「能连」。
+// 一个前端如果真的需要比 core 更新的契约，那时候再在这里覆盖它。
+export const MIN_API = SPEAKS.major;
 
 /**
  * The shadow kind.
