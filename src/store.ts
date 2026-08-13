@@ -55,8 +55,9 @@ export interface Store {
    *  for "how it went") and take the block off the "what now" face for this
    *  session. completed stays false, which IS the truth of it. */
   markMissed: (b: api.TimeBlock) => Promise<boolean>;
-  /** 推明天：retime by moving the date. The plan gate still applies — a locked
-   *  or petrified block comes back as a GateRefusal with its exits. */
+  /** 推明天：remove today + add tomorrow (a date in patch changes is a silent
+   *  no-op — verified live). The plan gate still applies: a locked or petrified
+   *  block comes back as a GateRefusal with its exits. */
   pushTomorrow: (b: api.TimeBlock) => Promise<boolean>;
   remove: (b: api.TimeBlock) => Promise<boolean>;
   /** 重新安排：the original stays as the record; tomorrow gets a new block
@@ -67,6 +68,8 @@ export interface Store {
   unlock: (b: api.TimeBlock) => Promise<boolean>;
   /** 标记冲突 — the third way out: the class really is colliding. */
   conflict: (b: api.TimeBlock) => Promise<boolean>;
+  /** 记一下心情 — one tap, undoable like everything else. */
+  recordMood: (mood: string) => Promise<boolean>;
   /** 先不看 — hide every pending card for this session. A client-side hide,
    *  NOT a rejection: silence must never settle anything, so nothing is sent. */
   skipAll: () => void;
@@ -285,17 +288,24 @@ export function useStore(cat: Catalog): Store {
 
   const pushTomorrow = useCallback(
     (b: api.TimeBlock) =>
-      act(
-        () =>
-          api
-            .patchPlan(date, {
-              action: 'update',
-              match: { id: b.id },
-              changes: { date: tomorrowIso() },
-            })
-            .then(() => undefined),
-        t('undo.pushed'),
-      ),
+      act(async () => {
+        // A date inside patch changes is a silent no-op (verified live: 200,
+        // block stays in its own day's document). A move is remove + add.
+        // Remove goes FIRST so a gate refusal leaves nothing half-moved.
+        await api.patchPlan(date, { action: 'remove', match: { id: b.id } });
+        await api.patchPlan(tomorrowIso(), {
+          action: 'add',
+          block: {
+            id: b.id + '-tmr-' + Date.now().toString(36),
+            time: b.time,
+            title: b.title,
+            type: b.type,
+            duration_min: b.duration_min,
+            ...(b.time_mode ? { time_mode: b.time_mode } : {}),
+            ...(b.timezone ? { timezone: b.timezone } : {}),
+          },
+        });
+      }, t('undo.pushed')),
     [act, date, tomorrowIso, t],
   );
 
@@ -338,6 +348,15 @@ export function useStore(cat: Catalog): Store {
     [act, date, t],
   );
 
+  const recordMood = useCallback(
+    (mood: string) =>
+      act(
+        () => api.recordMood(mood).then(() => undefined),
+        t('undo.mood', { mood }),
+      ),
+    [act, t],
+  );
+
   const takeBack = useCallback(async () => {
     if (!undo) return;
     const id = undo.opId;
@@ -378,6 +397,7 @@ export function useStore(cat: Catalog): Store {
     refish,
     unlock,
     conflict,
+    recordMood,
     skipAll: () => setSkipped((prev) => new Set([...prev, ...proposals.map((p) => p.id)])),
     clearGate: () => setGate(null),
     takeBack,

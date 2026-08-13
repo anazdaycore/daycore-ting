@@ -4,7 +4,7 @@ import { useStore } from './store';
 import { MenuSheet } from './MenuSheet';
 import { CaptureSheet } from './CaptureSheet';
 import { ActSheet } from './ActSheet';
-import { LedgerSheet, OutlookSheet, PeekSheet, WhySheet } from './Sheets';
+import { LedgerSheet, MoodSheet, OutlookSheet, PeekSheet, WhySheet } from './Sheets';
 import { applyTheme } from './theme';
 import * as api from '@daycore/core';
 import type { Boot, CustomTheme } from '@daycore/core';
@@ -79,7 +79,7 @@ export function App({ boot }: { boot: Boot }) {
     return () => clearInterval(t);
   }, []);
 
-  const [sheet, setSheet] = useState<'menu' | 'capture' | 'act' | 'peek' | 'ledger' | 'outlook' | 'why' | null>(null);
+  const [sheet, setSheet] = useState<'menu' | 'capture' | 'act' | 'peek' | 'ledger' | 'outlook' | 'why' | 'mood' | null>(null);
   const [whyProp, setWhyProp] = useState<api.Proposal | null>(null);
   const [themeList, setThemeList] = useState<CustomTheme[]>([]);
   const [themeId, setThemeId] = useState(boot.session.currentTheme || 'night');
@@ -181,9 +181,12 @@ export function App({ boot }: { boot: Boot }) {
 
         <header className="tg-top">
           <span className="tg-clock">{toHM(clock)}</span>
-          <span className="tg-l0">
+          <button className="tg-l0" onClick={() => setSheet('ledger')} aria-label={t('peek.ledger')}>
             {t('top.doneCount', { done: s.flow.doneCount, total: s.flow.total })}
-          </span>
+          </button>
+          <button className="tg-dots" onClick={() => setSheet('mood')} aria-label={t('mood.open')}>
+            ☺
+          </button>
           <button className="tg-dots" onClick={() => setSheet('menu')} aria-label={t('menu.open')}>
             ···
           </button>
@@ -374,7 +377,7 @@ export function App({ boot }: { boot: Boot }) {
 
         <footer className="tg-foot">
           {s.flow.next && (
-            <div className="tg-next">
+            <div className="tg-next" onClick={() => setSheet('peek')}>
               {t('foot.next', { time: s.flow.next.time ?? '', title: s.flow.next.title })}
             </div>
           )}
@@ -417,6 +420,7 @@ export function App({ boot }: { boot: Boot }) {
         {sheet === 'ledger' && <LedgerSheet t={t} s={s} onClose={() => setSheet(null)} />}
         {sheet === 'outlook' && <OutlookSheet t={t} s={s} onClose={() => setSheet(null)} />}
         {sheet === 'why' && whyProp && <WhySheet t={t} p={whyProp} onClose={() => setSheet(null)} />}
+        {sheet === 'mood' && <MoodSheet t={t} s={s} onClose={() => setSheet(null)} />}
       </div>
     </div>
   );
