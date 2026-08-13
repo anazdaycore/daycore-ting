@@ -68,8 +68,9 @@ export interface Store {
   unlock: (b: api.TimeBlock) => Promise<boolean>;
   /** 标记冲突 — the third way out: the class really is colliding. */
   conflict: (b: api.TimeBlock) => Promise<boolean>;
-  /** 记一下心情 — one tap, undoable like everything else. */
-  recordMood: (mood: string) => Promise<boolean>;
+  /** 记一下心情 — one tap, undoable like everything else. The id is the wire
+   *  value; the label is only for the undo line. */
+  recordMood: (mood: string, label?: string) => Promise<boolean>;
   /** 先不看 — hide every pending card for this session. A client-side hide,
    *  NOT a rejection: silence must never settle anything, so nothing is sent. */
   skipAll: () => void;
@@ -349,10 +350,10 @@ export function useStore(cat: Catalog): Store {
   );
 
   const recordMood = useCallback(
-    (mood: string) =>
+    (mood: string, label?: string) =>
       act(
         () => api.recordMood(mood).then(() => undefined),
-        t('undo.mood', { mood }),
+        t('undo.mood', { mood: label ?? mood }),
       ),
     [act, t],
   );

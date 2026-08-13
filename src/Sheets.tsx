@@ -244,32 +244,28 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
   );
 }
 
-/** 心情打卡 — six quick moods, one tap, gone. The emoji rides in the record
- *  (data), the label comes from the locale pack (copy). */
-const QUICK_MOODS: readonly [string, string][] = [
-  ['😊', 'mood.1'],
-  ['😌', 'mood.2'],
-  ['🤩', 'mood.3'],
-  ['😐', 'mood.4'],
-  ['😪', 'mood.5'],
-  ['😣', 'mood.6'],
-];
-
+/** 心情打卡 — the mood catalog is the SERVER's (GET /api/mood/kinds, emoji and
+ *  localized names included); a hardcoded frontend list would drift from what
+ *  POST /api/mood accepts ("unknown_mood" 400 if it did). One tap, gone. */
 export function MoodSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onClose: () => void }) {
+  const [kinds, setKinds] = useState<api.MoodKind[] | null>(null);
+  useEffect(() => {
+    void api.moodKinds().then((r) => setKinds(r.kinds ?? []), () => setKinds([]));
+  }, []);
   return (
     <Frame title={t('mood.title')} onClose={onClose}>
+      {kinds === null && <p className="tg-note">{t('capture.parsing')}</p>}
       <div className="tg-moodrow">
-        {QUICK_MOODS.map(([emoji, key]) => (
+        {(kinds ?? []).map((k) => (
           <button
-            key={key}
+            key={k.id}
             disabled={s.busy}
             onClick={() => {
-              const label = t(key === 'mood.1' ? 'mood.1' : key === 'mood.2' ? 'mood.2' : key === 'mood.3' ? 'mood.3' : key === 'mood.4' ? 'mood.4' : key === 'mood.5' ? 'mood.5' : 'mood.6');
-              void s.recordMood(emoji + ' ' + label).then((ok) => ok && onClose());
+              void s.recordMood(k.id, k.name).then((ok) => ok && onClose());
             }}
           >
-            <span className="e">{emoji}</span>
-            {t(key === 'mood.1' ? 'mood.1' : key === 'mood.2' ? 'mood.2' : key === 'mood.3' ? 'mood.3' : key === 'mood.4' ? 'mood.4' : key === 'mood.5' ? 'mood.5' : 'mood.6')}
+            <span className="e">{k.emoji}</span>
+            {k.name}
           </button>
         ))}
       </div>
