@@ -4,6 +4,7 @@ import { useStore } from './store';
 import { MenuSheet } from './MenuSheet';
 import { CaptureSheet } from './CaptureSheet';
 import { ActSheet } from './ActSheet';
+import { LedgerSheet, OutlookSheet, PeekSheet, WhySheet } from './Sheets';
 import { applyTheme } from './theme';
 import * as api from '@daycore/core';
 import type { Boot, CustomTheme } from '@daycore/core';
@@ -62,7 +63,7 @@ function useSwipe(onUp: () => void, onLeft?: () => void) {
     opacity: 1 + d.y / 260,
     transition: d.x || d.y ? 'none' : 'transform .25s cubic-bezier(.22,.9,.24,1), opacity .25s',
   };
-  return [style, down] as const;
+  return [style, down, d] as const;
 }
 
 export function App({ boot }: { boot: Boot }) {
@@ -78,7 +79,8 @@ export function App({ boot }: { boot: Boot }) {
     return () => clearInterval(t);
   }, []);
 
-  const [sheet, setSheet] = useState<'menu' | 'capture' | 'act' | null>(null);
+  const [sheet, setSheet] = useState<'menu' | 'capture' | 'act' | 'peek' | 'ledger' | 'outlook' | 'why' | null>(null);
+  const [whyProp, setWhyProp] = useState<api.Proposal | null>(null);
   const [themeList, setThemeList] = useState<CustomTheme[]>([]);
   const [themeId, setThemeId] = useState(boot.session.currentTheme || 'night');
   useEffect(() => {
@@ -125,6 +127,19 @@ export function App({ boot }: { boot: Boot }) {
     if (prop) void s.answer(prop, false);
   };
 
+  // The TTL line says which default silence signs — silence_accepts or
+  // silence_rejects — and how long is left. "Ignoring is always safe" is a
+  // promise; hiding the default would break it.
+  let ttlText: string | null = null;
+  if (prop?.expiresAt) {
+    const ms = Date.parse(prop.expiresAt) - Date.now();
+    if (ms > 0) {
+      const h = ms / 3600e3;
+      const left = h >= 1 ? Math.round(h) + 'h' : Math.max(5, Math.round(h * 60)) + 'm';
+      ttlText = t(prop.ttlPolicy === 'silence_accepts' ? 'prop.ttlAccept' : 'prop.ttlReject', { left });
+    }
+  }
+
   // Desktop drives on the keyboard, not on swipes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -133,16 +148,22 @@ export function App({ boot }: { boot: Boot }) {
       if (e.key === 'Enter' || e.key === 'ArrowUp') {
         e.preventDefault();
         primary();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSheet('peek');
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        secondary();
+        // An open surface folds first; the proposal's "no" is only the
+        // fallback when nothing is covering the screen.
+        if (sheet) setSheet(null);
+        else secondary();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  const [propStyle, propDown] = useSwipe(() => primary(), () => prop && s.answer(prop, false));
+  const [propStyle, propDown, propD] = useSwipe(() => primary(), () => prop && s.answer(prop, false));
   const [curStyle, curDown] = useSwipe(() => cur && s.complete(cur));
 
   return (
@@ -152,6 +173,9 @@ export function App({ boot }: { boot: Boot }) {
           <div className="tg-undo">
             <span>{s.undo.label}</span>
             <button onClick={() => void s.takeBack()}>{t('undo.take')}</button>
+            <button className="x" onClick={() => s.dismissUndo()} aria-label={t('undo.dismiss')}>
+              ✕
+            </button>
           </div>
         )}
 
@@ -165,14 +189,23 @@ export function App({ boot }: { boot: Boot }) {
           </button>
         </header>
 
+        <div className="tg-handle" onClick={() => setSheet('peek')}>
+          <span className="bar" />
+          {t('peek.hint')}
+        </div>
+
         <div className="tg-main">
           {s.error && <p className="tg-note">{s.error}</p>}
 
           {prop ? (
             <div className="tg-card tg-prop" onPointerDown={propDown} style={propStyle}>
+              {ttlText && <span className="ttl">{ttlText}</span>}
               <div className="tg-eyebrow">
                 <span>{t(prop.level === 'L3' ? 'prop.eyebrow.urgent' : 'prop.eyebrow')}</span>
                 <i className="ln" />
+                {s.proposals.length > 1 && (
+                  <span className="tg-qbadge">{t('prop.queue', { n: s.proposals.length - 1 })}</span>
+                )}
               </div>
               <h1 className="tg-title md">{prop.title}</h1>
               {prop.summary && <p className="tg-sub">{prop.summary}</p>}
@@ -185,6 +218,7 @@ export function App({ boot }: { boot: Boot }) {
                   </span>
                 </div>
               )}
+              {prop.evidence && <div className="ev">👁 {prop.evidence}</div>}
               <div className="tg-actrow">
                 {/* ⚠️ A compound card is a menu, and 汀's gestures cannot express
                     "which row" — a swipe is one bit. So the rows are buttons and
@@ -210,6 +244,24 @@ export function App({ boot }: { boot: Boot }) {
                 <button className="tg-btn sec" disabled={s.busy} onClick={() => void s.answer(prop, false)}>
                   {t('prop.reject')}
                 </button>
+                <button
+                  className="tg-btn ghost"
+                  onClick={() => {
+                    setWhyProp(prop);
+                    setSheet('why');
+                  }}
+                >
+                  {t('prop.followUp')}
+                </button>
+                <button className="tg-btn ghost" onClick={() => s.skipAll()}>
+                  {t('prop.skipAll')}
+                </button>
+              </div>
+              <div className="tg-sidecue l" style={{ opacity: propD.x < -30 ? 1 : 0 }}>
+                {t('prop.cue.reject')}
+              </div>
+              <div className="tg-sidecue r" style={{ opacity: propD.x > 30 ? 1 : 0 }}>
+                {t('prop.cue.accept')}
               </div>
             </div>
           ) : cur ? (
@@ -308,6 +360,16 @@ export function App({ boot }: { boot: Boot }) {
               <span>{t(prop ? 'swipe.accept' : 'swipe.complete')}</span>
             </div>
           )}
+          {(prop || cur) && (
+            <div className="tg-keyhint" style={{ margin: '0 auto' }}>
+              <kbd>↵</kbd>
+              {t('keyhint.accept')}
+              <kbd>esc</kbd>
+              {t('keyhint.reject')}
+              <kbd>↓</kbd>
+              {t('keyhint.peek')}
+            </div>
+          )}
         </div>
 
         <footer className="tg-foot">
@@ -343,6 +405,18 @@ export function App({ boot }: { boot: Boot }) {
           />
         )}
         {sheet === 'act' && cur && <ActSheet t={t} s={s} block={cur} onClose={() => setSheet(null)} />}
+        {sheet === 'peek' && (
+          <PeekSheet
+            t={t}
+            s={s}
+            onLedger={() => setSheet('ledger')}
+            onOutlook={() => setSheet('outlook')}
+            onClose={() => setSheet(null)}
+          />
+        )}
+        {sheet === 'ledger' && <LedgerSheet t={t} s={s} onClose={() => setSheet(null)} />}
+        {sheet === 'outlook' && <OutlookSheet t={t} s={s} onClose={() => setSheet(null)} />}
+        {sheet === 'why' && whyProp && <WhySheet t={t} p={whyProp} onClose={() => setSheet(null)} />}
       </div>
     </div>
   );

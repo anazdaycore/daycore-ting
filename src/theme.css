@@ -129,7 +129,7 @@ input{font:inherit;color:inherit}
 .tg-ax.ghost .d{border-style:dashed}
 .tg-axnow{display:flex;align-items:center;gap:8px;margin:4px 0}
 .tg-axnow .chip{font-size:10px;font-weight:750;color:var(--tg-accent-ink);background:var(--tg-accent);border-radius:999px;padding:2px 9px;font-variant-numeric:tabular-nums}
-.tg-axnow .ln{flex:1;height:1.5px;background:linear-gradient(90deg,var(--tg-accent),transparent)}
+.tg-axnow .ln{flex:1;height:1.5px;background:var(--tg-accent)}/* 均匀实线：渐变左粗右消、视觉偏心 */
 .tg-peekfoot{flex:none;display:flex;gap:8px;padding:10px 20px 16px}
 /* 列表行（账本/雷达/愿望） */
 .tg-li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--tg-line);font-size:12.5px}

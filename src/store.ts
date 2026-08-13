@@ -34,6 +34,8 @@ export interface GateRefusal {
 
 export interface Store {
   flow: Flow;
+  /** The raw day — the peek axis reads blocks off it directly. */
+  plan: api.DayPlan | null;
   proposals: api.Proposal[];
   undo: UndoOffer | null;
   busy: boolean;
@@ -65,6 +67,9 @@ export interface Store {
   unlock: (b: api.TimeBlock) => Promise<boolean>;
   /** 标记冲突 — the third way out: the class really is colliding. */
   conflict: (b: api.TimeBlock) => Promise<boolean>;
+  /** 先不看 — hide every pending card for this session. A client-side hide,
+   *  NOT a rejection: silence must never settle anything, so nothing is sent. */
+  skipAll: () => void;
   clearGate: () => void;
   takeBack: () => Promise<void>;
   dismissUndo: () => void;
@@ -82,6 +87,7 @@ export function useStore(cat: Catalog): Store {
   const [error, setError] = useState('');
   const [gate, setGate] = useState<GateRefusal | null>(null);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [tick, setTick] = useState(() => nowMin());
   const date = api.todayIso();
   // ⚠️ The undo bar's label is user-visible copy and goes through the
@@ -102,15 +108,15 @@ export function useStore(cat: Catalog): Store {
     try {
       const [p, ps] = await Promise.all([api.planForDate(date), api.proposals()]);
       setPlan(p);
-      // Only pending ones. The list can carry settled rows, and a card that
-      // comes back after being answered is the single most alarming thing this
-      // screen could do.
-      setProposals((ps.proposals ?? []).filter((x) => x.state === 'pending'));
+      // Only pending ones, minus any the reader waved off this session. The
+      // list can carry settled rows, and a card that comes back after being
+      // answered is the single most alarming thing this screen could do.
+      setProposals((ps.proposals ?? []).filter((x) => x.state === 'pending' && !skipped.has(x.id)));
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [date]);
+  }, [date, skipped]);
 
   useEffect(() => {
     void refresh();
@@ -354,6 +360,7 @@ export function useStore(cat: Catalog): Store {
 
   return {
     flow,
+    plan,
     proposals,
     undo,
     busy,
@@ -371,6 +378,7 @@ export function useStore(cat: Catalog): Store {
     refish,
     unlock,
     conflict,
+    skipAll: () => setSkipped((prev) => new Set([...prev, ...proposals.map((p) => p.id)])),
     clearGate: () => setGate(null),
     takeBack,
     dismissUndo: () => setUndo(null),
