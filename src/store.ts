@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '@daycore/core';
 import { flowAt, nowMin, type Flow } from './flow';
-import type { Boot } from '@daycore/core';
+import type { Catalog } from '@daycore/core';
 
 // 汀's state: the day, the pending proposals, and the thing you can still undo.
 //
@@ -41,7 +41,7 @@ export interface Store {
 /** How long an undo stays offered. Matches the prototype's 3s bar. */
 const UNDO_MS = 3000;
 
-export function useStore(boot: Boot): Store {
+export function useStore(cat: Catalog): Store {
   const [plan, setPlan] = useState<api.DayPlan | null>(null);
   const [proposals, setProposals] = useState<api.Proposal[]>([]);
   const [undo, setUndo] = useState<UndoOffer | null>(null);
@@ -52,8 +52,9 @@ export function useStore(boot: Boot): Store {
   // ⚠️ The undo bar's label is user-visible copy and goes through the
   // catalogue like everything else. It was the last hardcoded string in 汀, and
   // it hid here rather than in a component — which is exactly where this kind
-  // of thing survives a copy pass.
-  const t = boot.catalog.t;
+  // of thing survives a copy pass. The catalogue comes in as a parameter so a
+  // language switched mid-session reaches these labels too, not just the JSX.
+  const t = cat.t;
 
   // A minute hand. 30s so the "还剩 N 分钟" line is never more than half a
   // minute stale — 汀 shows one number and it is the one people check.

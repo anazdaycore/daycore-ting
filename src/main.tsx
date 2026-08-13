@@ -7,6 +7,7 @@ import { boot as bootUp, type Boot } from '@daycore/core';
 import { isFirstRun } from '@daycore/core';
 import { bootstrapCatalog, type Catalog } from '@daycore/core';
 import { manifest } from './manifest';
+import { applyTheme } from './theme';
 
 // ⚠️ The packs 汀 SHIPS, in public/locales/. Passed in rather than read from
 // @daycore/core, because each of the four frontends ships a different set — a
@@ -46,9 +47,18 @@ function Root() {
         if (!live) return;
         setBoot(b);
         setPhase('up');
-        // The theme the session is on. Falls back to the build's default rather
-        // than to nothing — an unthemed first paint reads as a broken install.
-        document.documentElement.setAttribute('data-tg', b.session.currentTheme || 'night');
+        // The theme the session is on — through the whitelist, so a backend
+        // default from another family ('sky') can never strand data-tg on a
+        // value no selector matches (that was the white-screen first paint).
+        // The builtin base is applied immediately; custom-theme variables
+        // follow once the family's list answers.
+        applyTheme(b.session.currentTheme || 'night', []);
+        void api.themes().then(
+          (th) => applyTheme(b.session.currentTheme || 'night', th.themes ?? []),
+          () => {
+            /* the builtin base is already on; a failed list changes nothing */
+          },
+        );
         if (b.deferred.length) {
           // Not an error and not silent. An operator has to approve 汀's shadow
           // kind before that one token can be themed; until then the

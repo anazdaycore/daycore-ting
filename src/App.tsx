@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { progressPct, toHM, toMin, nowMin } from './flow';
 import { useStore } from './store';
-import type { Boot } from '@daycore/core';
+import { MenuSheet } from './MenuSheet';
+import { applyTheme } from './theme';
+import * as api from '@daycore/core';
+import type { Boot, CustomTheme } from '@daycore/core';
 
 // The single-piece flow. 画面永远只回答一个问题：现在做什么。
 //
@@ -61,13 +64,46 @@ function useSwipe(onUp: () => void, onLeft?: () => void) {
 }
 
 export function App({ boot }: { boot: Boot }) {
-  const s = useStore(boot);
-  const t = boot.catalog.t;
+  // The catalogue is STATE, not a boot constant: the menu sheet can switch the
+  // language mid-session, and every label — including the ones inside the
+  // store's undo bar — follows without a reload.
+  const [cat, setCat] = useState(boot.catalog);
+  const t = cat.t;
+  const s = useStore(cat);
   const [clock, setClock] = useState(() => nowMin());
   useEffect(() => {
     const t = setInterval(() => setClock(nowMin()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  const [sheet, setSheet] = useState<'menu' | null>(null);
+  const [themeList, setThemeList] = useState<CustomTheme[]>([]);
+  const [themeId, setThemeId] = useState(boot.session.currentTheme || 'night');
+  useEffect(() => {
+    let live = true;
+    void api.themes().then(
+      (th) => {
+        if (live) setThemeList(th.themes ?? []);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const chooseTheme = (id: string) => {
+    setThemeId(id);
+    applyTheme(id, themeList);
+    void api.setTheme(id).catch(() => {});
+  };
+
+  const chooseLanguage = (locale: string) => {
+    api.chooseLocale(locale);
+    const avail = boot.availableLocales.length ? boot.availableLocales : ['zh-CN'];
+    void api.loadCatalog(locale, avail, avail[0] ?? 'zh-CN').then(setCat);
+    void api.patchSettings({ language: locale }).catch(() => {});
+  };
 
   const prop = s.proposals[0] ?? null;
   const cur = s.flow.current;
@@ -122,6 +158,9 @@ export function App({ boot }: { boot: Boot }) {
           <span className="tg-l0">
             {t('top.doneCount', { done: s.flow.doneCount, total: s.flow.total })}
           </span>
+          <button className="tg-dots" onClick={() => setSheet('menu')} aria-label={t('menu.open')}>
+            ···
+          </button>
         </header>
 
         <div className="tg-main">
@@ -247,6 +286,18 @@ export function App({ boot }: { boot: Boot }) {
             </div>
           )}
         </footer>
+        {sheet === 'menu' && (
+          <MenuSheet
+            t={t}
+            themeId={themeId}
+            themes={themeList}
+            onTheme={chooseTheme}
+            locale={cat.locale}
+            locales={boot.availableLocales}
+            onLocale={chooseLanguage}
+            onClose={() => setSheet(null)}
+          />
+        )}
       </div>
     </div>
   );
