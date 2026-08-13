@@ -39,7 +39,7 @@ function Lines({ text }: { text: string }) {
   );
 }
 
-function useSwipe(onUp: () => void, onLeft?: () => void) {
+function useSwipe(onUp: () => void, onLeft?: () => void, onDown?: () => void) {
   const [d, setD] = useState({ x: 0, y: 0 });
   const down = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button,input')) return;
@@ -54,6 +54,7 @@ function useSwipe(onUp: () => void, onLeft?: () => void) {
       setD({ x: 0, y: 0 });
       if (dy < -90) onUp();
       else if (onLeft && dx < -90) onLeft();
+      else if (onDown && dy > 90) onDown();
     };
     window.addEventListener('pointermove', mv);
     window.addEventListener('pointerup', up);
@@ -163,8 +164,14 @@ export function App({ boot }: { boot: Boot }) {
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  const [propStyle, propDown, propD] = useSwipe(() => primary(), () => prop && s.answer(prop, false));
-  const [curStyle, curDown] = useSwipe(() => cur && s.complete(cur));
+  // 下滑 = 全天抽屉 on every face — the gesture map is one of the product's
+  // invariants (up = the main action, down = the day, left = push away).
+  const [propStyle, propDown, propD] = useSwipe(
+    () => primary(),
+    () => prop && s.answer(prop, false),
+    () => setSheet('peek'),
+  );
+  const [curStyle, curDown] = useSwipe(() => cur && s.complete(cur), undefined, () => setSheet('peek'));
 
   return (
     <div className="tg-app">
