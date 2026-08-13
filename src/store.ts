@@ -21,18 +21,51 @@ export interface UndoOffer {
   until: number;
 }
 
+/** A 409 from the plan gate, kept so the UI can offer the ways OUT of it —
+ *  "you cannot" without "but you could instead" is the one failure the tone
+ *  rules name outright. */
+export interface GateRefusal {
+  code: 'locked' | 'petrified' | 'refish_capped' | string;
+  blockId: string;
+  lockLevel?: string;
+  confirmable?: boolean;
+  message: string;
+}
+
 export interface Store {
   flow: Flow;
   proposals: api.Proposal[];
   undo: UndoOffer | null;
   busy: boolean;
   error: string;
+  gate: GateRefusal | null;
   date: string;
-  complete: (b: api.TimeBlock) => Promise<void>;
-  answer: (p: api.Proposal, accept: boolean) => Promise<void>;
+  /** Blocks the reader sent away via markMissed, this session only. */
+  dismissed: ReadonlySet<string>;
+  complete: (b: api.TimeBlock) => Promise<boolean>;
+  answer: (p: api.Proposal, accept: boolean) => Promise<boolean>;
   /** Take one row of a compound card. ⚠️ Not the same call as answer — see the
    *  note on the implementation. */
-  take: (p: api.Proposal, rowID: string) => Promise<void>;
+  take: (p: api.Proposal, rowID: string) => Promise<boolean>;
+  /** Confirm capture candidates into today: one add each, gated per block. */
+  capture: (blocks: api.TimeBlock[]) => Promise<boolean>;
+  /** 没做：the past is not rewritten — record it in the note (the field built
+   *  for "how it went") and take the block off the "what now" face for this
+   *  session. completed stays false, which IS the truth of it. */
+  markMissed: (b: api.TimeBlock) => Promise<boolean>;
+  /** 推明天：retime by moving the date. The plan gate still applies — a locked
+   *  or petrified block comes back as a GateRefusal with its exits. */
+  pushTomorrow: (b: api.TimeBlock) => Promise<boolean>;
+  remove: (b: api.TimeBlock) => Promise<boolean>;
+  /** 重新安排：the original stays as the record; tomorrow gets a new block
+   *  chained to it. Server counts the chain; tasks only (appointments and
+   *  done things are not refishable — domain/refish.go). */
+  refish: (b: api.TimeBlock, toDate: string) => Promise<boolean>;
+  /** Unlock a block (lock_level none) — one of the ways out of a lock refusal. */
+  unlock: (b: api.TimeBlock) => Promise<boolean>;
+  /** 标记冲突 — the third way out: the class really is colliding. */
+  conflict: (b: api.TimeBlock) => Promise<boolean>;
+  clearGate: () => void;
   takeBack: () => Promise<void>;
   dismissUndo: () => void;
   refresh: () => Promise<void>;
@@ -47,6 +80,8 @@ export function useStore(cat: Catalog): Store {
   const [undo, setUndo] = useState<UndoOffer | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [gate, setGate] = useState<GateRefusal | null>(null);
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [tick, setTick] = useState(() => nowMin());
   const date = api.todayIso();
   // ⚠️ The undo bar's label is user-visible copy and goes through the
@@ -107,23 +142,36 @@ export function useStore(cat: Catalog): Store {
   }, []);
 
   const act = useCallback(
-    async (run: () => Promise<void>, label: string) => {
+    async (run: () => Promise<void>, label: string): Promise<boolean> => {
       setBusy(true);
       setError('');
+      setGate(null);
       try {
         await run();
         const opId = await latestOp();
         await refresh();
         if (opId) offer(opId, label);
+        return true;
       } catch (e) {
         if (e instanceof api.ApiError && e.status === 409) {
           // The plan gate refused. Its message is written for a person and is
-          // the whole reason this is not optimistic — see docs/specs.
+          // the whole reason this is not optimistic — see docs/specs. The
+          // refusal is KEPT (code + blockId) so the sheet can render the ways
+          // out of it, not just the sentence.
+          const b = (e.body ?? {}) as { code?: string; blockId?: string; lockLevel?: string; confirmable?: boolean };
+          setGate({
+            code: b.code ?? 'blocked',
+            blockId: b.blockId ?? '',
+            lockLevel: b.lockLevel,
+            confirmable: b.confirmable,
+            message: e.message,
+          });
           setError(e.message);
         } else {
           setError(e instanceof Error ? e.message : String(e));
         }
         await refresh();
+        return false;
       } finally {
         setBusy(false);
       }
@@ -172,6 +220,118 @@ export function useStore(cat: Catalog): Store {
     [act, t],
   );
 
+  /** The day after `date`, in the browser's own calendar — the same calendar
+   *  the blocks' wall-clock times already read. */
+  const tomorrowIso = useCallback(() => {
+    const [y = 1970, m = 1, d = 1] = date.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + 1);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+  }, [date]);
+
+  const capture = useCallback(
+    (blocks: api.TimeBlock[]) =>
+      act(async () => {
+        // ⚠️ Sequential gated adds, NOT a full-day PUT. PUT /api/plan replaces
+        // the day wholesale and never meets the plan gate — a lock or a frozen
+        // block it silently tramples is exactly the failure the gate exists
+        // for. The price is one op per block, of which the undo bar offers the
+        // last; every one is in the ledger.
+        for (const b of blocks) {
+          await api.patchPlan(date, {
+            action: 'add',
+            block: {
+              id: b.id,
+              time: b.time,
+              title: b.title,
+              type: b.type,
+              duration_min: b.duration_min,
+              ...(b.time_mode ? { time_mode: b.time_mode } : {}),
+              ...(b.timezone ? { timezone: b.timezone } : {}),
+            },
+          });
+        }
+      }, t('undo.captured', { n: blocks.length, title: blocks[0]?.title ?? '' })),
+    [act, date, t],
+  );
+
+  const markMissed = useCallback(
+    (b: api.TimeBlock) =>
+      act(
+        () =>
+          api
+            .patchPlan(date, {
+              action: 'update',
+              match: { id: b.id },
+              changes: { note: (b.note ? b.note + ' · ' : '') + t('now.missedMark') },
+            })
+            .then(() => undefined),
+        t('undo.missed'),
+      ).then((ok) => {
+        // Off the "what now" face for this session. The block itself keeps
+        // completed=false — that is not a rewrite, it is what happened — and
+        // the note says so in the reader's own words, which the agent reads.
+        if (ok) setDismissed((prev) => new Set(prev).add(b.id));
+        return ok;
+      }),
+    [act, date, t],
+  );
+
+  const pushTomorrow = useCallback(
+    (b: api.TimeBlock) =>
+      act(
+        () =>
+          api
+            .patchPlan(date, {
+              action: 'update',
+              match: { id: b.id },
+              changes: { date: tomorrowIso() },
+            })
+            .then(() => undefined),
+        t('undo.pushed'),
+      ),
+    [act, date, tomorrowIso, t],
+  );
+
+  const remove = useCallback(
+    (b: api.TimeBlock) =>
+      act(
+        () => api.patchPlan(date, { action: 'remove', match: { id: b.id } }).then(() => undefined),
+        t('undo.removed', { title: b.title }),
+      ),
+    [act, date, t],
+  );
+
+  const refish = useCallback(
+    (b: api.TimeBlock, toDate: string) =>
+      act(
+        () =>
+          api
+            .refishBlock(toDate, {
+              title: b.title,
+              type: b.type,
+              time: b.time,
+              duration_min: b.duration_min,
+              rescheduled_from: b.id,
+            })
+            .then(() => undefined),
+        t('undo.refished'),
+      ),
+    [act, t],
+  );
+
+  const unlock = useCallback(
+    (b: api.TimeBlock) =>
+      act(() => api.lockPlanBlock(date, b.id, 'none').then(() => undefined), t('undo.unlocked')),
+    [act, date, t],
+  );
+
+  const conflict = useCallback(
+    (b: api.TimeBlock) =>
+      act(() => api.markConflict(date, b.id).then(() => undefined), t('undo.conflict')),
+    [act, date, t],
+  );
+
   const takeBack = useCallback(async () => {
     if (!undo) return;
     const id = undo.opId;
@@ -187,16 +347,31 @@ export function useStore(cat: Catalog): Store {
     }
   }, [undo, refresh]);
 
+  const flow = flowAt(plan, tick);
+  // A block sent away as 没做 stops being the answer to "what now" for this
+  // session. It is still in the plan, still completed=false — see markMissed.
+  if (flow.current && dismissed.has(flow.current.id)) flow.current = null;
+
   return {
-    flow: flowAt(plan, tick),
+    flow,
     proposals,
     undo,
     busy,
     error,
+    gate,
     date,
+    dismissed,
     complete,
     answer,
     take,
+    capture,
+    markMissed,
+    pushTomorrow,
+    remove,
+    refish,
+    unlock,
+    conflict,
+    clearGate: () => setGate(null),
     takeBack,
     dismissUndo: () => setUndo(null),
     refresh,

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { progressPct, toHM, toMin, nowMin } from './flow';
 import { useStore } from './store';
 import { MenuSheet } from './MenuSheet';
+import { CaptureSheet } from './CaptureSheet';
+import { ActSheet } from './ActSheet';
 import { applyTheme } from './theme';
 import * as api from '@daycore/core';
 import type { Boot, CustomTheme } from '@daycore/core';
@@ -76,7 +78,7 @@ export function App({ boot }: { boot: Boot }) {
     return () => clearInterval(t);
   }, []);
 
-  const [sheet, setSheet] = useState<'menu' | null>(null);
+  const [sheet, setSheet] = useState<'menu' | 'capture' | 'act' | null>(null);
   const [themeList, setThemeList] = useState<CustomTheme[]>([]);
   const [themeId, setThemeId] = useState(boot.session.currentTheme || 'night');
   useEffect(() => {
@@ -245,6 +247,9 @@ export function App({ boot }: { boot: Boot }) {
                 <button className="tg-btn pri" disabled={s.busy} onClick={() => void s.complete(cur)}>
                   {t('now.complete')}
                 </button>
+                <button className="tg-btn sec" disabled={s.busy} onClick={() => setSheet('act')}>
+                  {t('act.open')}
+                </button>
               </div>
             </div>
           ) : s.flow.next ? (
@@ -257,6 +262,27 @@ export function App({ boot }: { boot: Boot }) {
                 <Lines text={t('gap.title')} />
               </h1>
               <p className="tg-sub">{t('gap.body', { n: s.flow.gapMin })}</p>
+              <div className="tg-actrow">
+                <button className="tg-btn pri" onClick={() => setSheet('capture')}>
+                  {t('caps.say')}
+                </button>
+              </div>
+            </div>
+          ) : s.flow.total === 0 ? (
+            <div className="tg-card">
+              <div className="tg-eyebrow mute">
+                <span>{t('empty.eyebrow')}</span>
+                <i className="ln" />
+              </div>
+              <h1 className="tg-title md">
+                <Lines text={t('empty.title')} />
+              </h1>
+              <p className="tg-sub">{t('empty.body')}</p>
+              <div className="tg-actrow">
+                <button className="tg-btn pri" onClick={() => setSheet('capture')}>
+                  {t('caps.say')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="tg-card">
@@ -268,6 +294,11 @@ export function App({ boot }: { boot: Boot }) {
                 <Lines text={t('done.title')} />
               </h1>
               <p className="tg-sub">{t('done.body')}</p>
+              <div className="tg-actrow">
+                <button className="tg-btn pri" onClick={() => setSheet('capture')}>
+                  {t('caps.say')}
+                </button>
+              </div>
             </div>
           )}
 
@@ -285,6 +316,10 @@ export function App({ boot }: { boot: Boot }) {
               {t('foot.next', { time: s.flow.next.time ?? '', title: s.flow.next.title })}
             </div>
           )}
+          <div className="tg-caps" onClick={() => setSheet('capture')}>
+            {t('caps.hint')}
+            <span className="mic">✎</span>
+          </div>
         </footer>
         {sheet === 'menu' && (
           <MenuSheet
@@ -298,6 +333,16 @@ export function App({ boot }: { boot: Boot }) {
             onClose={() => setSheet(null)}
           />
         )}
+        {sheet === 'capture' && (
+          <CaptureSheet
+            t={t}
+            date={s.date}
+            busy={s.busy}
+            onConfirm={s.capture}
+            onClose={() => setSheet(null)}
+          />
+        )}
+        {sheet === 'act' && cur && <ActSheet t={t} s={s} block={cur} onClose={() => setSheet(null)} />}
       </div>
     </div>
   );
