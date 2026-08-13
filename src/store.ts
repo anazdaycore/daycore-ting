@@ -99,7 +99,7 @@ export function useStore(boot: Boot): Store {
     try {
       const { ops } = await api.ops(1);
       const top = ops?.[0];
-      return top && !top.reverted ? top.id : null;
+      return top ? top.id : null;
     } catch {
       return null;
     }
