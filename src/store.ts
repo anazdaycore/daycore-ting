@@ -44,6 +44,10 @@ export interface Store {
   date: string;
   /** Blocks the reader sent away via markMissed, this session only. */
   dismissed: ReadonlySet<string>;
+  /** Take a block off the "what now" face for this session without writing
+   *  anything — used after a successful refish, where the record should stay
+   *  exactly as it is. */
+  dismissForNow: (id: string) => void;
   complete: (b: api.TimeBlock) => Promise<boolean>;
   answer: (p: api.Proposal, accept: boolean) => Promise<boolean>;
   /** Take one row of a compound card. ⚠️ Not the same call as answer — see the
@@ -388,6 +392,7 @@ export function useStore(cat: Catalog): Store {
     gate,
     date,
     dismissed,
+    dismissForNow: (id: string) => setDismissed((prev) => new Set(prev).add(id)),
     complete,
     answer,
     take,

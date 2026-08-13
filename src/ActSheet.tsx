@@ -82,7 +82,15 @@ export function ActSheet({ t, s, block, onClose }: { t: Catalog['t']; s: Store; 
                       const dt = new Date(y, m - 1, d + 1);
                       const p = (n: number) => String(n).padStart(2, '0');
                       const tmr = `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
-                      void s.refish(block, tmr).then((ok) => ok && onClose());
+                      void s.refish(block, tmr).then((ok) => {
+                        // The original stays as the (stone) record; the new one
+                        // lands tomorrow. Nothing about the stone one needs the
+                        // "what now" face any more.
+                        if (ok) {
+                          s.dismissForNow(block.id);
+                          onClose();
+                        }
+                      });
                     }}
                   >
                     <span className="lb">{t('act.refish')}</span>
