@@ -73,8 +73,15 @@ export function App({ boot }: { boot: Boot }) {
   const cur = s.flow.current;
 
   const primary = () => {
-    if (prop) void s.answer(prop, true);
-    else if (cur) void s.complete(cur);
+    // ⚠️ A compound card is NOT accepted by the primary gesture. The server
+    // reads the choice as a row id, so a blanket "accept" settles the card
+    // without running anything it offered — the swipe would look like it worked
+    // and change nothing. The rows are on screen as buttons instead.
+    if (prop) {
+      if (!prop.rows?.length) void s.answer(prop, true);
+      return;
+    }
+    if (cur) void s.complete(cur);
   };
   const secondary = () => {
     if (prop) void s.answer(prop, false);
@@ -97,7 +104,7 @@ export function App({ boot }: { boot: Boot }) {
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  const [propStyle, propDown] = useSwipe(() => prop && s.answer(prop, true), () => prop && s.answer(prop, false));
+  const [propStyle, propDown] = useSwipe(() => primary(), () => prop && s.answer(prop, false));
   const [curStyle, curDown] = useSwipe(() => cur && s.complete(cur));
 
   return (
@@ -138,9 +145,27 @@ export function App({ boot }: { boot: Boot }) {
                 </div>
               )}
               <div className="tg-actrow">
-                <button className="tg-btn pri" disabled={s.busy} onClick={() => void s.answer(prop, true)}>
-                  {t('prop.accept')}
-                </button>
+                {/* ⚠️ A compound card is a menu, and 汀's gestures cannot express
+                    "which row" — a swipe is one bit. So the rows are buttons and
+                    the accept gesture is disabled for those cards (see primary()
+                    below); rejecting stays available either way, because "no" is
+                    unambiguous whatever the card's shape. */}
+                {prop.rows?.length
+                  ? prop.rows.map((row) => (
+                      <button
+                        key={row.id}
+                        className="tg-btn pri"
+                        disabled={s.busy}
+                        onClick={() => void s.take(prop, row.id)}
+                      >
+                        {row.label}
+                      </button>
+                    ))
+                  : (
+                      <button className="tg-btn pri" disabled={s.busy} onClick={() => void s.answer(prop, true)}>
+                        {t('prop.accept')}
+                      </button>
+                    )}
                 <button className="tg-btn sec" disabled={s.busy} onClick={() => void s.answer(prop, false)}>
                   {t('prop.reject')}
                 </button>
