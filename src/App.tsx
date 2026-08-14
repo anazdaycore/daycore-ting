@@ -401,14 +401,14 @@ export function App({ boot }: { boot: Boot }) {
           )}
         </div>
 
+        {s.flow.next && (
+          <div className="tg-next" onClick={() => setSheet('peek')}>
+            <span className="k">{t(s.flow.nextTomorrow ? 'foot.nextTmr' : 'foot.next')}</span>
+            <span className="t">{s.flow.next.title}</span>
+            <span className="tm">{s.flow.next.time}</span>
+          </div>
+        )}
         <footer className="tg-foot">
-          {s.flow.next && (
-            <div className="tg-next" onClick={() => setSheet('peek')}>
-              {s.flow.nextTomorrow
-                ? t('foot.nextTmr', { time: s.flow.next.time ?? '', title: s.flow.next.title })
-                : t('foot.next', { time: s.flow.next.time ?? '', title: s.flow.next.title })}
-            </div>
-          )}
           <div className="tg-caps" onClick={() => setSheet('capture')}>
             {t('caps.hint')}
             <span className="mic">
