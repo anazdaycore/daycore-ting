@@ -87,7 +87,8 @@ export interface Store {
 }
 
 /** How long an undo stays offered. Matches the prototype's 3s bar. */
-const UNDO_MS = 3000;
+// 清单定稿 5200ms（纸屿 5600）——撤销条的可见时长本身就是产品数值，不是随便挑的。
+const UNDO_MS = 5200;
 
 export function useStore(cat: Catalog): Store {
   const [plan, setPlan] = useState<api.DayPlan | null>(null);
