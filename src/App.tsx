@@ -83,6 +83,32 @@ export function App({ boot }: { boot: Boot }) {
 
   const [sheet, setSheet] = useState<'menu' | 'capture' | 'act' | 'peek' | 'ledger' | 'outlook' | 'why' | 'mood' | null>(null);
   const [whyProp, setWhyProp] = useState<api.Proposal | null>(null);
+  // 顶栏账本入口的计数是原型语义：「悄悄做了 N 件」= 今天 actor=agent 的
+  // 操作数（L0 安静自动化在账本上留下的行）。不是「今天完成 x/y」——汀
+  // 不给完成率站台，那是积债语气的入口。
+  const [quietCount, setQuietCount] = useState(0);
+  useEffect(() => {
+    let live = true;
+    void api.ops(50).then(
+      (r) => {
+        if (!live) return;
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        const now = new Date();
+        const today = now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate());
+        setQuietCount(
+          (r.ops ?? []).filter((o) => {
+            if (o.actor !== 'agent') return false;
+            const at = new Date(o.createdAt);
+            return at.getFullYear() + '-' + p2(at.getMonth() + 1) + '-' + p2(at.getDate()) === today;
+          }).length,
+        );
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
   const [themeList, setThemeList] = useState<CustomTheme[]>([]);
   const [themeId, setThemeId] = useState(boot.session.currentTheme || 'night');
   useEffect(() => {
@@ -190,7 +216,7 @@ export function App({ boot }: { boot: Boot }) {
         <header className="tg-top">
           <span className="tg-clock">{toHM(clock)}</span>
           <button className="tg-l0" onClick={() => setSheet('ledger')} aria-label={t('peek.ledger')}>
-            {t('top.doneCount', { done: s.flow.doneCount, total: s.flow.total })}
+            {t('top.l0', { n: quietCount })}
           </button>
           <button className="tg-dots" onClick={() => setSheet('mood')} aria-label={t('mood.open')}>
             <Icon n="smile" size={17} />

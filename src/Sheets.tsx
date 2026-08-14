@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as api from '@daycore/core';
-import type { Assignment, Catalog, OperationLog, Proposal, Wish } from '@daycore/core';
+import type { Assignment, Catalog, Course, OperationLog, Proposal, Wish } from '@daycore/core';
 import { nowMin, toMin } from './flow';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
@@ -25,6 +25,16 @@ function relDay(t: Catalog['t'], date: string, today: string): string {
 
 function fmtClock(min: number): string {
   return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+}
+
+function dayIso(d: Date): string {
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+}
+
+function addDaysIso(date: string, n: number): string {
+  const [y = 1970, m = 1, d = 1] = date.split('-').map(Number);
+  return dayIso(new Date(y, m - 1, d + n));
 }
 
 function Frame({ title, icon, onClose, children }: { title: string; icon: IconName; onClose: () => void; children: React.ReactNode }) {
@@ -86,7 +96,6 @@ export function PeekSheet({
           <span className={'d ' + d} />
           <span className="t">
             {b.title}
-            {b.duration_min ? ' · ' + b.duration_min + 'min' : ''}
             {isNow && <span className="tg-qbadge"> · {t('peek.now')}</span>}
           </span>
         </div>
@@ -116,7 +125,12 @@ export function PeekSheet({
           <span className="tg-pdate">
             <Icon n="calendar" size={13} />
             {t('peek.dayline', {
-              date: new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date()),
+              // 原型是「8月14日 周五」：月日一段、星期一段，中间空格 —— 一次
+              // Intl 调用在 zh 下不会带这个空格，两段拼。
+              date:
+                new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long', day: 'numeric' }).format(new Date()) +
+                ' ' +
+                new Intl.DateTimeFormat(document.documentElement.lang || undefined, { weekday: 'short' }).format(new Date()),
             })}
           </span>
           <span className="tg-phint">{t('peek.title')}</span>
@@ -211,26 +225,42 @@ export function LedgerSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onCl
 export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onClose: () => void }) {
   const [items, setItems] = useState<Assignment[] | null>(null);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
+  const [courseList, setCourseList] = useState<Course[]>([]);
   const load = () => {
-    const [y = 1970, m = 1, d = 1] = s.date.split('-').map(Number);
-    const end = new Date(y, m - 1, d + 14);
-    const p = (n: number) => String(n).padStart(2, '0');
-    const to = `${end.getFullYear()}-${p(end.getMonth() + 1)}-${p(end.getDate())}`;
+    const to = addDaysIso(s.date, 14);
     void api.assignments({ from: s.date, to }).then((r) => setItems(r.assignments ?? []), () => setItems([]));
     void api.wishes('active').then((r) => setWishes(r.wishes ?? []), () => setWishes([]));
+    void api.courses().then((r) => setCourseList(r.courses ?? []), () => {});
   };
   useEffect(load, []);
   const setWish = async (w: Wish, status: 'done' | 'archived') => {
     await api.updateWish(w.id, { status }).catch(() => {});
     load();
   };
-  const daysTo = (due: string) => {
-    const a = due.slice(0, 10).split('-').map(Number);
-    const b = s.date.split('-').map(Number);
-    return Math.round(
-      (new Date(a[0] ?? 1970, (a[1] ?? 1) - 1, a[2] ?? 1).getTime() -
-        new Date(b[0] ?? 1970, (b[1] ?? 1) - 1, b[2] ?? 1).getTime()) / 86400000,
-    );
+  // 原型 radar() 的紧迫度（design-ui/core/daycore-core.js）：距截止 <26h 最急
+  // （暖色）、<76h 次之、其余灰。按小时算，不是按天——「明早 10 点」和「明晚
+  // 23:59」在夜里不该同色。
+  const urgencyOf = (dueAt?: string): number => {
+    if (!dueAt) return 0;
+    const ms = new Date(dueAt).getTime();
+    if (Number.isNaN(ms)) return 0;
+    const dh = (ms - Date.now()) / 3600e3;
+    return dh < 26 ? 2 : dh < 76 ? 1 : 0;
+  };
+  // 原型 radar() 的截止标签：今天/明天 HH:MM，再远是「周日 8月16日 23:59」——
+  // 星期几 + 月日 + 钟点，相对天数（"3 天后"）看不出是上午还是深夜。
+  const dueLabel = (dueAt?: string): string => {
+    if (!dueAt) return '';
+    const d = new Date(dueAt);
+    if (Number.isNaN(d.getTime())) return '';
+    const lang = document.documentElement.lang || undefined;
+    const hm = new Intl.DateTimeFormat(lang, { hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+    const day = dayIso(d);
+    if (day === s.date) return t('day.today') + ' ' + hm;
+    if (day === addDaysIso(s.date, 1)) return t('day.tomorrow') + ' ' + hm;
+    const wd = new Intl.DateTimeFormat(lang, { weekday: 'short' }).format(d);
+    const md = new Intl.DateTimeFormat(lang, { month: 'long', day: 'numeric' }).format(d);
+    return wd + ' ' + md + ' ' + hm;
   };
   return (
     <Frame title={t('outlook.title')} icon="zap" onClose={onClose}>
@@ -238,17 +268,19 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
       {items === null && <p className="tg-note">{t('capture.parsing')}</p>}
       {items !== null && items.length === 0 && <p className="tg-note">{t('outlook.empty')}</p>}
       {(items ?? []).map((a) => {
-        const n = a.dueAt ? daysTo(a.dueAt) : 99;
-        const u = n <= 2 ? 2 : n <= 7 ? 1 : 0;
+        const u = urgencyOf(a.dueAt);
+        // 课程行是人读的代码（CS 201），不是主键——把 UUID 摆上行是这次
+        // 复查抓出来的真 bug。
+        const course = a.courseId ? courseList.find((c) => c.id === a.courseId) : undefined;
         return (
           <div key={a.id} className="tg-li">
             <span className="tg-u" data-u={u} />
             <div className="bd">
               <div className="lb">{a.title}</div>
-              <div className="sb">{a.courseId ?? ''}</div>
+              {course && <div className="sb">{course.courseCode || course.name}</div>}
             </div>
             <span className="sb" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650, color: u === 2 ? 'var(--tg-warm)' : 'var(--tg-ink2)' }}>
-              {a.dueAt ? (n <= 1 ? relDay(t, a.dueAt.slice(0, 10), s.date) : t('outlook.inDays', { n })) : ''}
+              {dueLabel(a.dueAt)}
             </span>
           </div>
         );
@@ -285,12 +317,16 @@ export function MoodSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onClos
   useEffect(() => {
     void api.moodKinds().then((r) => setKinds(r.kinds ?? []), () => setKinds([]));
   }, []);
+  // 原型（ting-parts.jsx 的 QUICK_MOODS）在汀只放六张快脸 ——「一次点选就够」。
+  // 词表仍是服务端的十二种，这里只决定呈现哪几个 id；其余心情照旧能从
+  // 「说一句」和陪伴里记下来。
+  const QUICK = ['happy', 'calm', 'excited', 'neutral', 'tired', 'stressed'];
   return (
     <Frame title={t('mood.title')} icon="smile" onClose={onClose}>
       <p className="tg-note" style={{ margin: '2px 0 10px' }}>{t('mood.sub')}</p>
       {kinds === null && <p className="tg-note">{t('capture.parsing')}</p>}
       <div className="tg-moodrow">
-        {(kinds ?? []).map((k) => (
+        {(kinds ?? []).filter((k) => QUICK.includes(k.id)).map((k) => (
           <button
             key={k.id}
             disabled={s.busy}
