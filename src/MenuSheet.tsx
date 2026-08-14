@@ -1,8 +1,97 @@
 import { useEffect, useState } from 'react';
 import * as api from '@daycore/core';
-import type { Catalog, CustomTheme, Rhythm } from '@daycore/core';
+import type { Catalog, CustomTheme, Rhythm, User } from '@daycore/core';
 import { BUILTIN_THEMES, themeAttribute } from './theme';
 import { Icon } from './Icon';
+
+/** 账户 — the quiet top of the menu. Anonymous is a first-class state with its
+ *  own line ("data lives on this device"), not an error page. Login/register is
+ *  one form with a toggle; success reloads so the merged user session boots
+ *  clean (the backend folds the anonymous session into the user's on auth). */
+function AccountBlock({
+  t,
+  mode,
+  onMode,
+  onBusy,
+}: {
+  t: Catalog['t'];
+  mode: 'none' | 'login' | 'register';
+  onMode: (m: 'none' | 'login' | 'register') => void;
+  onBusy: (b: boolean) => void;
+}) {
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [f, setF] = useState({ name: '', email: '', password: '' });
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void api.me().then((r) => setUser(r.user), () => setUser(null));
+  }, []);
+  const submit = () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) { setErr(t('auth.errEmail')); return; }
+    if (f.password.length < 8) { setErr(t('auth.errPassword')); return; }
+    setErr('');
+    setBusy(true);
+    onBusy(true);
+    void (mode === 'register' ? api.register(f.email, f.password, f.name.trim() || undefined) : api.login(f.email, f.password)).then(
+      () => location.reload(),
+      () => { setBusy(false); onBusy(false); setErr(t('auth.failed')); },
+    );
+  };
+  const signOut = () => {
+    setBusy(true);
+    onBusy(true);
+    void api.logout().then(() => location.reload(), () => { setBusy(false); onBusy(false); });
+  };
+
+  if (mode !== 'none') {
+    return (
+      <>
+        <div className="tg-cap">{t(mode === 'login' ? 'auth.signin' : 'auth.register')}</div>
+        {mode === 'register' && (
+          <input className="tg-input" style={{ marginBottom: 8 }} placeholder={t('auth.namePh')} aria-label={t('auth.name')}
+            value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+        )}
+        <input className="tg-input" style={{ marginBottom: 8 }} type="email" placeholder="you@school.edu" aria-label={t('auth.email')}
+          value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+        <input className="tg-input" type="password" placeholder={t('auth.passwordPh')} aria-label={t('auth.password')}
+          value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })}
+          onKeyDown={(e) => e.key === 'Enter' && submit()} />
+        {err && <p className="tg-note" style={{ marginTop: 8 }}>{err}</p>}
+        <div className="tg-actrow">
+          <button className="tg-btn pri" disabled={busy} onClick={submit}>
+            {t(mode === 'login' ? 'auth.submitLogin' : 'auth.submitRegister')}
+          </button>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <button className="un" onClick={() => { onMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}>
+            {t(mode === 'login' ? 'auth.toRegister' : 'auth.toLogin')}
+          </button>
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <div className="tg-cap">{t('menu.account')}</div>
+      <div className="tg-li">
+        <span className="ic" style={{ color: 'var(--tg-accent)', marginTop: 3, display: 'inline-flex' }}>
+          <Icon n="smile" size={13} />
+        </span>
+        <div className="bd">
+          <div className="lb">{user ? (user.name || user.email || '') : t('auth.anon')}</div>
+          <div className="sb">{user ? (user.email ?? '') + ' · ' + t('auth.synced') : t('auth.anonSub')}</div>
+        </div>
+        {user ? (
+          <button className="un" disabled={busy} onClick={signOut}>{t('auth.signout')}</button>
+        ) : (
+          <button className="un" style={{ color: 'var(--tg-accent)' }} disabled={busy || user === undefined} onClick={() => onMode('login')}>
+            {t('auth.enter')}
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
 
 // The menu sheet — 汀's only settings surface. The prototype keeps it to three
 // things: the water (theme), the language, and what 汀 is. That economy is the
@@ -48,6 +137,8 @@ export function MenuSheet({
   // 服务端学不出来时回 cold 默认（source:'default'）——照播，行尾的语气说明
   // 比数字本身更是这行的存在理由。
   const [rhythm, setRhythm] = useState<Rhythm | null>(null);
+  const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
+  const [authBusy, setAuthBusy] = useState(false);
   useEffect(() => {
     void api.rhythm().then(setRhythm, () => setRhythm(null));
   }, []);
@@ -72,6 +163,9 @@ export function MenuSheet({
           </button>
         </div>
         <div className="tg-sbody">
+          <AccountBlock t={t} mode={authMode} onMode={setAuthMode} onBusy={setAuthBusy} />
+          {authMode === 'none' && !authBusy && (
+          <>
           <div className="tg-cap">{t('menu.theme')}</div>
           <div className="tg-seg">
             {BUILTIN_THEMES.map((id) => (
@@ -119,6 +213,8 @@ export function MenuSheet({
             ))}
           </select>
           <p className="tg-note">{t('menu.tagline')}</p>
+          </>
+          )}
         </div>
       </div>
     </>
