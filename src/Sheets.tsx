@@ -174,14 +174,23 @@ export function LedgerSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onCl
       {ops === null && <p className="tg-note">{t('capture.parsing')}</p>}
       {ops !== null && ops.length === 0 && <p className="tg-note">{t('ledger.empty')}</p>}
       {(ops ?? []).map((op) => {
-        const day = op.date || op.createdAt.slice(0, 10);
+        // The ledger answers "what happened when" — group by the day the op
+        // HAPPENED (its createdAt), not the plan date it touched; mixing the
+        // two printed two separate "today" headers for one afternoon. And the
+        // wire's createdAt is UTC ISO: render the browser's own clock, or the
+        // times read five hours off.
+        const at = new Date(op.createdAt);
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        const day = at.getFullYear() + '-' + p2(at.getMonth() + 1) + '-' + p2(at.getDate());
         const head = day !== lastDay ? <div className="tg-cap">{relDay(t, day, s.date)}</div> : null;
         lastDay = day;
         return (
           <div key={op.id}>
             {head}
             <div className="tg-li">
-              <span className="tm">{op.createdAt.slice(11, 16)}</span>
+              <span className="tm">
+                {p2(at.getHours())}:{p2(at.getMinutes())}
+              </span>
               <div className="bd">
                 <div className="lb">{op.summary || op.action}</div>
                 <div className="sb">{t(op.actor === 'user' ? 'ledger.who.me' : 'ledger.who.ai')}</div>
