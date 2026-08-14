@@ -13,11 +13,10 @@ import type { Boot, CustomTheme } from '@daycore/core';
 
 // The single-piece flow. 画面永远只回答一个问题：现在做什么。
 //
-// Three faces, in priority order — proposal, current block, and the several
-// kinds of nothing. The prototype (design-ui/ting) also has a brief face and a
-// mood frame; those need endpoints 汀 does not call yet and are deliberately
-// left out rather than faked, because a face wired to a mock is a face that
-// will be rewritten.
+// Faces, in priority order — the morning brief (before noon, until waved
+// off), then proposal, current block, and the several kinds of nothing.
+// The prototype's mood frame is still deliberately left out: it wants a
+// "no mood today yet" signal worth an interruption, not a face on a mock.
 
 /**
  * Render a translated string that contains line breaks.
@@ -139,8 +138,11 @@ export function App({ boot }: { boot: Boot }) {
 
   const prop = s.proposals[0] ?? null;
   const cur = s.flow.current;
+  const brief = s.brief;
 
   const primary = () => {
+    // 导语脸的主手势 = 划掉（「知道了」），不落到提案/块上。
+    if (brief) { s.dismissBrief(); return; }
     // ⚠️ A compound card is NOT accepted by the primary gesture. The server
     // reads the choice as a row id, so a blanket "accept" settles the card
     // without running anything it offered — the swipe would look like it worked
@@ -199,6 +201,7 @@ export function App({ boot }: { boot: Boot }) {
     () => setSheet('peek'),
   );
   const [curStyle, curDown] = useSwipe(() => cur && s.complete(cur), undefined, () => setSheet('peek'));
+  const [briefStyle, briefDown] = useSwipe(() => s.dismissBrief(), undefined, () => setSheet('peek'));
 
   return (
     <div className="tg-app">
@@ -234,7 +237,28 @@ export function App({ boot }: { boot: Boot }) {
         <div className="tg-main">
           {s.error && <p className="tg-note">{s.error}</p>}
 
-          {prop ? (
+          {brief ? (
+            <div className="tg-card" onPointerDown={briefDown} style={briefStyle} data-screen-label="brief">
+              <div className="tg-eyebrow">
+                <Icon n="sun" size={13} />
+                <span>{t('brief.eyebrow')}</span>
+                <i className="ln" />
+              </div>
+              <h1 className="tg-title sm">{brief.title}</h1>
+              <div className="tg-sub tg-brieflines">
+                {brief.lines.map((l, i) => (
+                  <p key={i}>{l}</p>
+                ))}
+              </div>
+              <div className="tg-actrow">
+                <button className="tg-btn sec" onClick={() => s.dismissBrief()}>
+                  <Icon n="chevron-up" size={14} />
+                  {t('brief.swipe')}
+                </button>
+              </div>
+              <div className="tg-metarow">{t(brief.empty ? 'brief.hintEmpty' : 'brief.hint')}</div>
+            </div>
+          ) : prop ? (
             <div className="tg-card tg-prop" onPointerDown={propDown} style={propStyle}>
               {ttlText && <span className="ttl">{ttlText}</span>}
               <div className="tg-eyebrow">
@@ -432,16 +456,20 @@ export function App({ boot }: { boot: Boot }) {
           )}
         </div>
 
-        {(prop || cur) && (
+        {(brief || prop || cur) && (
           // ⚠️ Must sit OUTSIDE .tg-main: that container is position:relative and
           // only as tall as the face, so bottom:86px landed the hint row on top
           // of the proposal card's own buttons. Anchored to .tg-app it floats
           // above the next-bar, where the keyboard driver actually looks.
           <div className="tg-keyhint">
             <kbd>↵</kbd>
-            {t('keyhint.accept')}
-            <kbd>esc</kbd>
-            {t('keyhint.reject')}
+            {t(brief ? 'keyhint.brief' : 'keyhint.accept')}
+            {!brief && (
+              <>
+                <kbd>esc</kbd>
+                {t('keyhint.reject')}
+              </>
+            )}
             <kbd>↓</kbd>
             {t('keyhint.peek')}
           </div>

@@ -236,7 +236,7 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
     void api.courses().then((r) => setCourseList(r.courses ?? []), () => {});
   };
   useEffect(load, []);
-  const setWish = async (w: Wish, status: 'done' | 'archived') => {
+  const setWish = async (w: Wish, status: 'done' | 'dropped') => {
     await api.updateWish(w.id, { status }).catch(() => {});
     load();
   };
@@ -303,7 +303,7 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
           <button className="un" style={{ color: 'var(--tg-accent)' }} onClick={() => void setWish(w, 'done')}>
             {t('outlook.done')}
           </button>
-          <button className="un" style={{ color: 'var(--tg-ink3)' }} onClick={() => void setWish(w, 'archived')}>
+          <button className="un" style={{ color: 'var(--tg-ink3)' }} onClick={() => void setWish(w, 'dropped')}>
             {t('outlook.drop')}
           </button>
         </div>

@@ -44,6 +44,10 @@ export interface Store {
   date: string;
   /** 会话时区的当前分钟（0-1439）——现在线/peek 轴读它，不要再自己 new Date()。 */
   tick: number;
+  /** 导语卡（晨卡）：午前且今天没划掉时是第一张脸。empty 日也有卡（「今天还是空的」）。 */
+  brief: api.Brief | null;
+  /** 划掉导语（今日不再出现；按会话时区的日期记在 localStorage）。 */
+  dismissBrief: () => void;
   /** Blocks taken off the "what now" face this session (dismissForNow). */
   dismissed: ReadonlySet<string>;
   /** Take a block off the "what now" face for this session without writing
@@ -101,6 +105,15 @@ export function useStore(cat: Catalog, tz = ''): Store {
   // 播种，而验收机可能在任何时区——两处都走 tz 版帮手（tz 空时回退浏览器本地）。
   const [tick, setTick] = useState(() => api.nowMinutesInTZ(tz));
   const date = api.todayIsoInTZ(tz);
+  const [brief, setBrief] = useState<api.Brief | null>(null);
+  // 「今天划掉了导语」按会话时区的日记：划一次管一天，过午它自己也不来。
+  const [briefGone, setBriefGone] = useState(() => {
+    try { return localStorage.getItem('daycore.briefDismissed'); } catch { return null; }
+  });
+  const dismissBrief = useCallback(() => {
+    try { localStorage.setItem('daycore.briefDismissed', date); } catch { /* 隐私模式 */ }
+    setBriefGone(date);
+  }, [date]);
   // ⚠️ The undo bar's label is user-visible copy and goes through the
   // catalogue like everything else. It was the last hardcoded string in 汀, and
   // it hid here rather than in a component — which is exactly where this kind
@@ -127,16 +140,19 @@ export function useStore(cat: Catalog, tz = ''): Store {
   const [planTmr, setPlanTmr] = useState<DayPlan | null>(null);
   const refresh = useCallback(async () => {
     try {
-      const [p, ps, pt] = await Promise.all([
+      const [p, ps, pt, bf] = await Promise.all([
         api.planForDate(date),
         api.proposals(),
         // Tomorrow rides along: when today runs out, the footer chip and the
         // done face still have something honest to point at (prototype parity —
         // its flow.next falls through to tomorrow's first block).
         api.planForDate(tomorrowIso()).catch(() => null),
+        api.brief().catch(() => null),
       ]);
       setPlan(p);
       setPlanTmr(pt);
+      // 午前 + 今天没划掉才给看（会话时区的午前；即时算，不挂 tick 依赖）。
+      setBrief(bf && api.nowMinutesInTZ(tz) < 12 * 60 && briefGone !== date ? bf : null);
       // Only pending ones, minus any the reader waved off this session. The
       // list can carry settled rows, and a card that comes back after being
       // answered is the single most alarming thing this screen could do.
@@ -145,7 +161,7 @@ export function useStore(cat: Catalog, tz = ''): Store {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [date, skipped, tomorrowIso]);
+  }, [date, skipped, tomorrowIso, tz, briefGone]);
 
   useEffect(() => {
     void refresh();
@@ -387,6 +403,8 @@ export function useStore(cat: Catalog, tz = ''): Store {
   return {
     flow,
     tick,
+    brief,
+    dismissBrief,
     plan,
     proposals,
     undo,
