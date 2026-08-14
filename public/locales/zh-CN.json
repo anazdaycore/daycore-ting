@@ -85,6 +85,8 @@
   "menu.title": "汀 · 此刻",
   "menu.theme": "水色",
   "menu.language": "语言",
+  "menu.rhythm": "节律：约 {sleep} 睡 · {wake} 起",
+  "menu.rhythmSub": "熬太久了我会劝你歇歇，语气是担心不是训斥",
   "menu.tagline": "汀：水边的小平地。画面永远只回答一个问题——现在做什么。",
   "theme.night": "夜汀",
   "theme.sky": "晴空",

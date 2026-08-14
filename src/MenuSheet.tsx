@@ -1,4 +1,6 @@
-import type { Catalog, CustomTheme } from '@daycore/core';
+import { useEffect, useState } from 'react';
+import * as api from '@daycore/core';
+import type { Catalog, CustomTheme, Rhythm } from '@daycore/core';
 import { BUILTIN_THEMES, themeAttribute } from './theme';
 import { Icon } from './Icon';
 
@@ -42,6 +44,13 @@ export function MenuSheet({
   onLocale: (locale: string) => void;
   onClose: () => void;
 }) {
+  // 节律行：原型从 mock state 读，落地读 GET /api/v2/rhythm（core rhythm()）。
+  // 服务端学不出来时回 cold 默认（source:'default'）——照播，行尾的语气说明
+  // 比数字本身更是这行的存在理由。
+  const [rhythm, setRhythm] = useState<Rhythm | null>(null);
+  useEffect(() => {
+    void api.rhythm().then(setRhythm, () => setRhythm(null));
+  }, []);
   // The session can hold a theme id from the shared backend set that 汀 does
   // not render (e.g. 'sky') — themeAttribute() already maps it onto 夜汀 for the
   // actual palette; the seg must light the SAME effective choice, otherwise the
@@ -71,6 +80,17 @@ export function MenuSheet({
               </button>
             ))}
           </div>
+          {rhythm && (
+            <div className="tg-li">
+              <span className="ic" style={{ color: 'var(--tg-accent)', marginTop: 3, display: 'inline-flex' }}>
+                <Icon n="moon" size={13} />
+              </span>
+              <div className="bd">
+                <div className="lb">{t('menu.rhythm', { sleep: rhythm.sleep, wake: rhythm.wake })}</div>
+                <div className="sb">{t('menu.rhythmSub')}</div>
+              </div>
+            </div>
+          )}
           {themes.length > 0 && (
             <div className="tg-rows">
               {themes.map((th) => (

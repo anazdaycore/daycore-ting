@@ -85,6 +85,8 @@
   "menu.title": "Ting · Now",
   "menu.theme": "Water",
   "menu.language": "Language",
+  "menu.rhythm": "Rhythm: asleep ~{sleep} · up ~{wake}",
+  "menu.rhythmSub": "If you stay up too long I'll nudge you to rest — worry, not scolding",
   "menu.tagline": "Ting: a small flat place by the water. The screen answers just one question — what now.",
   "theme.night": "Night",
   "theme.sky": "Sky",
