@@ -20,6 +20,7 @@ const PATHS: Record<string, string> = {
   zap: '<path d="M13 3 5 13.5h5.5L11 21l8-10.5h-5.5Z"/>',
   'arrow-right': '<path d="M5 12h14M13 6l6 6-6 6"/>',
   'chevron-up': '<path d="m6 14.5 6-6 6 6"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   send: '<path d="M20.5 3.5 10 14M20.5 3.5 14 20.5l-4-6.5-7-3Z"/>',
   star: '<path d="m12 3.5 2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.5l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7Z"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M8 3v4M16 3v4M3.5 10.5h17"/>',

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import * as api from '@daycore/core';
 import { Icon } from './Icon';
 import type { Catalog, TimeBlock } from '@daycore/core';
@@ -26,6 +26,26 @@ export function CaptureSheet({
   const [cands, setCands] = useState<TimeBlock[]>([]);
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
   const [err, setErr] = useState('');
+  const [note, setNote] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // 附件钮：选了文件就按名字收进资料库（createMaterial），不是上传字节——
+  // 和纸屿陪伴面板的 🔗 同一条路径。完成后留一句短回执，不打断说话。
+  const attach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      await api.createMaterial({
+        title: f.name,
+        body: t('capture.attachBody', { kb: Math.max(1, Math.round(f.size / 1024)) }),
+        source: 'upload',
+      });
+      setNote(t('capture.attachOk', { name: f.name }));
+    } catch {
+      setNote(t('capture.attachFail'));
+    }
+  };
 
   const submit = async (q?: string) => {
     const v = (q ?? text).trim();
@@ -93,6 +113,22 @@ export function CaptureSheet({
           {phase !== 'candidates' ? (
             <>
               <div className="tg-inrow">
+                <button
+                  className="tg-btn sec"
+                  style={{ width: 46, padding: 0, borderRadius: 14, flex: 'none' }}
+                  disabled={phase === 'parsing'}
+                  aria-label={t('capture.attach')}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Icon n="link" size={16} />
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  style={{ display: 'none' }}
+                  aria-hidden
+                  onChange={(e) => void attach(e)}
+                />
                 <input
                   autoFocus
                   value={text}
@@ -114,13 +150,19 @@ export function CaptureSheet({
                 </button>
               </div>
               <div className="tg-quick">
-                {[1, 2, 3].map((n) => (
-                  <button key={n} disabled={phase === 'parsing'} onClick={() => void submit(t(n === 1 ? 'capture.quick.1' : n === 2 ? 'capture.quick.2' : 'capture.quick.3'))}>
-                    {t(n === 1 ? 'capture.quick.1' : n === 2 ? 'capture.quick.2' : 'capture.quick.3')}
+                {[1, 2, 3, 4].map((n) => (
+                  <button
+                    key={n}
+                    className={n === 4 ? 'q' : undefined}
+                    disabled={phase === 'parsing'}
+                    onClick={() => void submit(t(n === 1 ? 'capture.quick.1' : n === 2 ? 'capture.quick.2' : n === 3 ? 'capture.quick.3' : 'capture.quick.4'))}
+                  >
+                    {t(n === 1 ? 'capture.quick.1' : n === 2 ? 'capture.quick.2' : n === 3 ? 'capture.quick.3' : 'capture.quick.4')}
                   </button>
                 ))}
               </div>
               {phase === 'parsing' && <p className="tg-note">{t('capture.parsing')}</p>}
+              {note && <p className="tg-note">{note}</p>}
               {err && <p className="tg-note">{err}</p>}
               <p className="tg-note">{t('capture.hint')}</p>
             </>
