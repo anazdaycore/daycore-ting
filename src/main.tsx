@@ -6,7 +6,7 @@ import { Setting } from './Setting';
 import { boot as bootUp, type Boot } from '@daycore/core';
 import { isFirstRun } from '@daycore/core';
 import { bootstrapCatalog, type Catalog } from '@daycore/core';
-import { manifest } from './manifest';
+import { FAMILY_ID, manifest } from './manifest';
 import { applyTheme } from './theme';
 
 // ⚠️ The packs 汀 SHIPS, in public/locales/. Passed in rather than read from
@@ -66,9 +66,9 @@ function Root() {
         // value no selector matches (that was the white-screen first paint).
         // The builtin base is applied immediately; custom-theme variables
         // follow once the family's list answers.
-        applyTheme(b.session.currentTheme || 'night', []);
+        applyTheme(api.themeForFamily(b.session, FAMILY_ID) || 'night', []);
         void api.themes().then(
-          (th) => applyTheme(b.session.currentTheme || 'night', th.themes ?? []),
+          (th) => applyTheme(api.themeForFamily(b.session, FAMILY_ID) || 'night', th.themes ?? []),
           () => {
             /* the builtin base is already on; a failed list changes nothing */
           },

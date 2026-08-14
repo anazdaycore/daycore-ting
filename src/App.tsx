@@ -7,6 +7,7 @@ import { ActSheet } from './ActSheet';
 import { LedgerSheet, MoodSheet, OutlookSheet, PeekSheet, WhySheet } from './Sheets';
 import { Icon } from './Icon';
 import { applyTheme } from './theme';
+import { FAMILY_ID } from './manifest';
 import * as api from '@daycore/core';
 import type { Boot, CustomTheme } from '@daycore/core';
 
@@ -110,7 +111,7 @@ export function App({ boot }: { boot: Boot }) {
     };
   }, []);
   const [themeList, setThemeList] = useState<CustomTheme[]>([]);
-  const [themeId, setThemeId] = useState(boot.session.currentTheme || 'night');
+  const [themeId, setThemeId] = useState(api.themeForFamily(boot.session, FAMILY_ID) || 'night');
   useEffect(() => {
     let live = true;
     void api.themes().then(
