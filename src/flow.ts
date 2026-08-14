@@ -31,8 +31,11 @@ export function nowMin(now = new Date()): number {
 export interface Flow {
   /** The block covering right now, if any. */
   current: TimeBlock | null;
-  /** The next one that has not started. */
+  /** The next one that has not started — same-day, or tomorrow's first when
+   *  today has run out (the footer chip and the done face both read it). */
   next: TimeBlock | null;
+  /** True when `next` is tomorrow's first block rather than one of today's. */
+  nextTomorrow: boolean;
   /** Minutes until `next` starts. */
   gapMin: number;
   /** Nothing left today. */
@@ -85,6 +88,7 @@ export function flowAt(plan: DayPlan | null, atMin: number): Flow {
   return {
     current,
     next,
+    nextTomorrow: false,
     gapMin: next ? Math.max(0, toMin(next.time!) - atMin) : 0,
     doneForToday: current === null && next === null,
     doneCount,

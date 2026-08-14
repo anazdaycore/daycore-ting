@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '@daycore/core';
-import { flowAt, nowMin, type Flow } from './flow';
-import type { Catalog } from '@daycore/core';
+import { flowAt, nowMin, toMin, type Flow } from './flow';
+import type { Catalog, DayPlan, TimeBlock } from '@daycore/core';
 
 // 汀's state: the day, the pending proposals, and the thing you can still undo.
 //
@@ -112,10 +112,28 @@ export function useStore(cat: Catalog): Store {
     return () => clearInterval(t);
   }, []);
 
+  /** The day after `date`, in the browser's own calendar — the same calendar
+   *  the blocks' wall-clock times already read. */
+  const tomorrowIso = useCallback(() => {
+    const [y = 1970, m = 1, d = 1] = date.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + 1);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+  }, [date]);
+
+  const [planTmr, setPlanTmr] = useState<DayPlan | null>(null);
   const refresh = useCallback(async () => {
     try {
-      const [p, ps] = await Promise.all([api.planForDate(date), api.proposals()]);
+      const [p, ps, pt] = await Promise.all([
+        api.planForDate(date),
+        api.proposals(),
+        // Tomorrow rides along: when today runs out, the footer chip and the
+        // done face still have something honest to point at (prototype parity —
+        // its flow.next falls through to tomorrow's first block).
+        api.planForDate(tomorrowIso()).catch(() => null),
+      ]);
       setPlan(p);
+      setPlanTmr(pt);
       // Only pending ones, minus any the reader waved off this session. The
       // list can carry settled rows, and a card that comes back after being
       // answered is the single most alarming thing this screen could do.
@@ -124,7 +142,7 @@ export function useStore(cat: Catalog): Store {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [date, skipped]);
+  }, [date, skipped, tomorrowIso]);
 
   useEffect(() => {
     void refresh();
@@ -234,14 +252,6 @@ export function useStore(cat: Catalog): Store {
     [act, t],
   );
 
-  /** The day after `date`, in the browser's own calendar — the same calendar
-   *  the blocks' wall-clock times already read. */
-  const tomorrowIso = useCallback(() => {
-    const [y = 1970, m = 1, d = 1] = date.split('-').map(Number);
-    const dt = new Date(y, m - 1, d + 1);
-    const p = (n: number) => String(n).padStart(2, '0');
-    return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
-  }, [date]);
 
   const capture = useCallback(
     (blocks: api.TimeBlock[]) =>
@@ -381,6 +391,17 @@ export function useStore(cat: Catalog): Store {
   // A block sent away as 没做 stops being the answer to "what now" for this
   // session. It is still in the plan, still completed=false — see markMissed.
   if (flow.current && dismissed.has(flow.current.id)) flow.current = null;
+  // Today exhausted -> point at tomorrow's first live block, flagged, so the
+  // faces and the footer chip can tell later-today from tomorrow.
+  if (!flow.next && planTmr) {
+    const tmr = planTmr.blocks
+      .filter((b) => !b.hidden && b.time !== null && !b.completed)
+      .sort((a: TimeBlock, b: TimeBlock) => toMin(a.time!) - toMin(b.time!))[0];
+    if (tmr) {
+      flow.next = tmr;
+      flow.nextTomorrow = true;
+    }
+  }
 
   return {
     flow,

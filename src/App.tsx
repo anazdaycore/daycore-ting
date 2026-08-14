@@ -333,7 +333,7 @@ export function App({ boot }: { boot: Boot }) {
                 </button>
               </div>
             </div>
-          ) : s.flow.next ? (
+          ) : s.flow.next && !s.flow.nextTomorrow ? (
             <div className="tg-card">
               <div className="tg-eyebrow mute">
                 <span>{t('gap.eyebrow')}</span>
@@ -349,23 +349,7 @@ export function App({ boot }: { boot: Boot }) {
                 </button>
               </div>
             </div>
-          ) : s.flow.total === 0 ? (
-            <div className="tg-card">
-              <div className="tg-eyebrow mute">
-                <span>{t('empty.eyebrow')}</span>
-                <i className="ln" />
-              </div>
-              <h1 className="tg-title md">
-                <Lines text={t('empty.title')} />
-              </h1>
-              <p className="tg-sub">{t('empty.body')}</p>
-              <div className="tg-actrow">
-                <button className="tg-btn pri" onClick={() => setSheet('capture')}>
-                  {t('caps.say')}
-                </button>
-              </div>
-            </div>
-          ) : (
+          ) : s.flow.nextTomorrow ? (
             <div className="tg-card">
               <div className="tg-eyebrow mute">
                 <span>{t('done.eyebrow')}</span>
@@ -375,6 +359,22 @@ export function App({ boot }: { boot: Boot }) {
                 <Lines text={t('done.title')} />
               </h1>
               <p className="tg-sub">{t('done.body')}</p>
+              <div className="tg-actrow">
+                <button className="tg-btn pri" onClick={() => setSheet('capture')}>
+                  {t('caps.say')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="tg-card">
+              <div className="tg-eyebrow mute">
+                <span>{t('empty.eyebrow')}</span>
+                <i className="ln" />
+              </div>
+              <h1 className="tg-title md">
+                <Lines text={t('empty.title')} />
+              </h1>
+              <p className="tg-sub">{t('empty.body')}</p>
               <div className="tg-actrow">
                 <button className="tg-btn pri" onClick={() => setSheet('capture')}>
                   {t('caps.say')}
@@ -404,7 +404,9 @@ export function App({ boot }: { boot: Boot }) {
         <footer className="tg-foot">
           {s.flow.next && (
             <div className="tg-next" onClick={() => setSheet('peek')}>
-              {t('foot.next', { time: s.flow.next.time ?? '', title: s.flow.next.title })}
+              {s.flow.nextTomorrow
+                ? t('foot.nextTmr', { time: s.flow.next.time ?? '', title: s.flow.next.title })
+                : t('foot.next', { time: s.flow.next.time ?? '', title: s.flow.next.title })}
             </div>
           )}
           <div className="tg-caps" onClick={() => setSheet('capture')}>

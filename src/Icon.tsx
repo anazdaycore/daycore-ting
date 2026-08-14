@@ -22,6 +22,7 @@ const PATHS: Record<string, string> = {
   'chevron-up': '<path d="m6 14.5 6-6 6 6"/>',
   send: '<path d="M20.5 3.5 10 14M20.5 3.5 14 20.5l-4-6.5-7-3Z"/>',
   star: '<path d="m12 3.5 2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.5l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7Z"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M8 3v4M16 3v4M3.5 10.5h17"/>',
 };
 
 export type IconName = keyof typeof PATHS;

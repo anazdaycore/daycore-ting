@@ -112,6 +112,15 @@ export function PeekSheet({
     <>
       <div className="tg-veil" onClick={onClose} />
       <div className="tg-peek" role="dialog" aria-label={t('peek.title')}>
+        <div className="tg-phead">
+          <span className="tg-pdate">
+            <Icon n="calendar" size={13} />
+            {t('peek.dayline', {
+              date: new Intl.DateTimeFormat(undefined, { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date()),
+            })}
+          </span>
+          <span className="tg-phint">{t('peek.title')}</span>
+        </div>
         <div className="tg-axis">
           {rows.length === 0 && <p className="tg-note">{t('peek.empty')}</p>}
           {rows.slice(0, firstFuture < 0 ? rows.length : firstFuture).map((r) => r.node)}
@@ -123,12 +132,15 @@ export function PeekSheet({
         </div>
         <div className="tg-peekfoot">
           <button className="tg-btn sec" onClick={onLedger}>
+            <Icon n="undo" size={14} />
             {t('peek.ledger')}
           </button>
           <button className="tg-btn sec" onClick={onOutlook}>
+            <Icon n="zap" size={14} />
             {t('peek.outlook')}
           </button>
           <button className="tg-btn ghost" onClick={onClose}>
+            <Icon n="chevron-up" size={14} />
             {t('peek.close')}
           </button>
         </div>
@@ -266,6 +278,7 @@ export function MoodSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onClos
   }, []);
   return (
     <Frame title={t('mood.title')} icon="smile" onClose={onClose}>
+      <p className="tg-note" style={{ margin: '2px 0 10px' }}>{t('mood.sub')}</p>
       {kinds === null && <p className="tg-note">{t('capture.parsing')}</p>}
       <div className="tg-moodrow">
         {(kinds ?? []).map((k) => (
