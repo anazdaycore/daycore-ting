@@ -44,7 +44,7 @@ export interface Store {
   date: string;
   /** 会话时区的当前分钟（0-1439）——现在线/peek 轴读它，不要再自己 new Date()。 */
   tick: number;
-  /** Blocks the reader sent away via markMissed, this session only. */
+  /** Blocks taken off the "what now" face this session (dismissForNow). */
   dismissed: ReadonlySet<string>;
   /** Take a block off the "what now" face for this session without writing
    *  anything — used after a successful refish, where the record should stay
@@ -57,10 +57,6 @@ export interface Store {
   take: (p: api.Proposal, rowID: string) => Promise<boolean>;
   /** Confirm capture candidates into today: one add each, gated per block. */
   capture: (blocks: api.TimeBlock[]) => Promise<boolean>;
-  /** 没做：the past is not rewritten — record it in the note (the field built
-   *  for "how it went") and take the block off the "what now" face for this
-   *  session. completed stays false, which IS the truth of it. */
-  markMissed: (b: api.TimeBlock) => Promise<boolean>;
   /** 推明天：remove today + add tomorrow (a date in patch changes is a silent
    *  no-op — verified live). The plan gate still applies: a locked or petrified
    *  block comes back as a GateRefusal with its exits. */
@@ -286,28 +282,6 @@ export function useStore(cat: Catalog, tz = ''): Store {
     [act, date, t],
   );
 
-  const markMissed = useCallback(
-    (b: api.TimeBlock) =>
-      act(
-        () =>
-          api
-            .patchPlan(date, {
-              action: 'update',
-              match: { id: b.id },
-              changes: { note: (b.note ? b.note + ' · ' : '') + t('now.missedMark') },
-            })
-            .then(() => undefined),
-        t('undo.missed'),
-      ).then((ok) => {
-        // Off the "what now" face for this session. The block itself keeps
-        // completed=false — that is not a rewrite, it is what happened — and
-        // the note says so in the reader's own words, which the agent reads.
-        if (ok) setDismissed((prev) => new Set(prev).add(b.id));
-        return ok;
-      }),
-    [act, date, t],
-  );
-
   const pushTomorrow = useCallback(
     (b: api.TimeBlock) =>
       act(async () => {
@@ -395,8 +369,8 @@ export function useStore(cat: Catalog, tz = ''): Store {
   }, [undo, refresh]);
 
   const flow = flowAt(plan, tick);
-  // A block sent away as 没做 stops being the answer to "what now" for this
-  // session. It is still in the plan, still completed=false — see markMissed.
+  // A block sent away (dismissForNow) stops being the answer to "what now"
+  // for this session. It stays in the plan, untouched.
   if (flow.current && dismissed.has(flow.current.id)) flow.current = null;
   // Today exhausted -> point at tomorrow's first live block, flagged, so the
   // faces and the footer chip can tell later-today from tomorrow.
@@ -426,7 +400,6 @@ export function useStore(cat: Catalog, tz = ''): Store {
     answer,
     take,
     capture,
-    markMissed,
     pushTomorrow,
     remove,
     refish,

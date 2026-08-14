@@ -2,7 +2,7 @@ import type { Catalog, TimeBlock } from '@daycore/core';
 import { Icon } from './Icon';
 import type { Store } from './store';
 
-// 没做 / 换一个… — the way OUT of the current block. Every dead end here gets a
+// 换一个… — the way OUT of the current block. Every dead end here gets a
 // side exit, which is tone rule ⑥: a 409 from the plan gate renders as its
 // message PLUS the actions that still work (unlock / conflict / refish), never
 // as a bare "cannot".
@@ -25,16 +25,6 @@ export function ActSheet({ t, s, block, onClose }: { t: Catalog['t']; s: Store; 
           </button>
         </div>
         <div className="tg-sbody">
-          <button
-            className="tg-menuitem"
-            disabled={s.busy}
-            onClick={() => {
-              void s.markMissed(block).then((ok) => ok && onClose());
-            }}
-          >
-            <span className="ic">−</span>
-            {t('act.missed')}
-          </button>
           <button
             className="tg-menuitem"
             disabled={s.busy}
