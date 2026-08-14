@@ -65,6 +65,7 @@
   "capture.placeholder": "Thoughts, feelings, plans — drop them here",
   "capture.send": "Send",
   "capture.parsing": "Xiaohe is listening…",
+  "capture.noAi": "Xiaohe isn't wired to a model yet — once the deployment sets an API key, I can listen.",
   "capture.empty": "Nothing to schedule in that — a little more detail?",
   "capture.hint": "Say it in passing · where it lands is Xiaohe's call, undo is one tap",
   "capture.pick": "Heard these — untick what is wrong",

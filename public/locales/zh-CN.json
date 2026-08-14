@@ -65,6 +65,7 @@
   "capture.placeholder": "杂念、心情、安排——丢进来就行",
   "capture.send": "发送",
   "capture.parsing": "小禾在听…",
+  "capture.noAi": "小禾还没接上模型——让部署的人配好 API key，我就能听懂了。",
   "capture.empty": "没听出什么要安排的——再说得具体一点？",
   "capture.hint": "随手说一句 · 放哪由小禾决定，错了随手撤",
   "capture.pick": "听见这些，勾掉不对的",

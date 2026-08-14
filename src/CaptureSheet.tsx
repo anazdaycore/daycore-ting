@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import * as api from '@daycore/core';
+import { ApiError } from '@daycore/core';
 import { Icon } from './Icon';
 import type { Catalog, TimeBlock } from '@daycore/core';
 
@@ -73,7 +74,8 @@ export function CaptureSheet({
       setChecked(new Set(blocks.map((_, i) => i)));
       setPhase('candidates');
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      // 503 ai_not_configured 不是「坏了」是「还没接上」——语气和文案都按这个说。
+      setErr(e instanceof ApiError && e.code === 'ai_not_configured' ? t('capture.noAi') : e instanceof Error ? e.message : String(e));
       setPhase('edit');
     }
   };
