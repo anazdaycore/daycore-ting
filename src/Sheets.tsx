@@ -233,7 +233,7 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
     );
   };
   return (
-    <Frame title={t('peek.outlook')} icon="zap" onClose={onClose}>
+    <Frame title={t('outlook.title')} icon="zap" onClose={onClose}>
       <div className="tg-cap">{t('outlook.radar')}</div>
       {items === null && <p className="tg-note">{t('capture.parsing')}</p>}
       {items !== null && items.length === 0 && <p className="tg-note">{t('outlook.empty')}</p>}
@@ -263,7 +263,7 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
           </span>
           <div className="bd">
             <div className="lb">{w.title}</div>
-            <div className="sb">{w.effortMin ? t('outlook.wishEffort', { n: w.effortMin }) : ''}</div>
+            <div className="sb">{w.effortMin ? t('outlook.wishEffort', { n: w.effortMin }) + t('outlook.wishTail') : t('outlook.wishTailBare')}</div>
           </div>
           <button className="un" style={{ color: 'var(--tg-accent)' }} onClick={() => void setWish(w, 'done')}>
             {t('outlook.done')}
