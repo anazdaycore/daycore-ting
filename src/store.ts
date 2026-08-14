@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '@daycore/core';
-import { flowAt, nowMin, toMin, type Flow } from './flow';
+import { flowAt, toMin, type Flow } from './flow';
 import type { Catalog, DayPlan, TimeBlock } from '@daycore/core';
 
 // 汀's state: the day, the pending proposals, and the thing you can still undo.
@@ -42,6 +42,8 @@ export interface Store {
   error: string;
   gate: GateRefusal | null;
   date: string;
+  /** 会话时区的当前分钟（0-1439）——现在线/peek 轴读它，不要再自己 new Date()。 */
+  tick: number;
   /** Blocks the reader sent away via markMissed, this session only. */
   dismissed: ReadonlySet<string>;
   /** Take a block off the "what now" face for this session without writing
@@ -90,7 +92,7 @@ export interface Store {
 // 清单定稿 5200ms（纸屿 5600）——撤销条的可见时长本身就是产品数值，不是随便挑的。
 const UNDO_MS = 5200;
 
-export function useStore(cat: Catalog): Store {
+export function useStore(cat: Catalog, tz = ''): Store {
   const [plan, setPlan] = useState<api.DayPlan | null>(null);
   const [proposals, setProposals] = useState<api.Proposal[]>([]);
   const [undo, setUndo] = useState<UndoOffer | null>(null);
@@ -99,8 +101,10 @@ export function useStore(cat: Catalog): Store {
   const [gate, setGate] = useState<GateRefusal | null>(null);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
-  const [tick, setTick] = useState(() => nowMin());
-  const date = api.todayIso();
+  // ⚠️ 「今天」与「现在」属于会话的时区，不属于浏览器：demo 按 Asia/Shanghai
+  // 播种，而验收机可能在任何时区——两处都走 tz 版帮手（tz 空时回退浏览器本地）。
+  const [tick, setTick] = useState(() => api.nowMinutesInTZ(tz));
+  const date = api.todayIsoInTZ(tz);
   // ⚠️ The undo bar's label is user-visible copy and goes through the
   // catalogue like everything else. It was the last hardcoded string in 汀, and
   // it hid here rather than in a component — which is exactly where this kind
@@ -111,7 +115,7 @@ export function useStore(cat: Catalog): Store {
   // A minute hand. 30s so the "还剩 N 分钟" line is never more than half a
   // minute stale — 汀 shows one number and it is the one people check.
   useEffect(() => {
-    const t = setInterval(() => setTick(nowMin()), 30_000);
+    const t = setInterval(() => setTick(api.nowMinutesInTZ(tz)), 30_000);
     return () => clearInterval(t);
   }, []);
 
@@ -408,6 +412,7 @@ export function useStore(cat: Catalog): Store {
 
   return {
     flow,
+    tick,
     plan,
     proposals,
     undo,

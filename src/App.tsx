@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { progressPct, toHM, toMin, nowMin } from './flow';
+import { progressPct, toHM, toMin } from './flow';
 import { useStore } from './store';
 import { MenuSheet } from './MenuSheet';
 import { CaptureSheet } from './CaptureSheet';
@@ -75,10 +75,12 @@ export function App({ boot }: { boot: Boot }) {
   // store's undo bar — follows without a reload.
   const [cat, setCat] = useState(boot.catalog);
   const t = cat.t;
-  const s = useStore(cat);
-  const [clock, setClock] = useState(() => nowMin());
+  // 会话时区是「今天」的唯一真相（demo 可能跨时区播种），全端共享这一个值。
+  const tz = api.sessionTimezone(boot.session);
+  const s = useStore(cat, tz);
+  const [clock, setClock] = useState(() => api.nowMinutesInTZ(tz));
   useEffect(() => {
-    const t = setInterval(() => setClock(nowMin()), 30_000);
+    const t = setInterval(() => setClock(api.nowMinutesInTZ(tz)), 30_000);
     return () => clearInterval(t);
   }, []);
 
@@ -93,14 +95,11 @@ export function App({ boot }: { boot: Boot }) {
     void api.ops(50).then(
       (r) => {
         if (!live) return;
-        const p2 = (n: number) => String(n).padStart(2, '0');
-        const now = new Date();
-        const today = now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate());
+        const today = api.todayIsoInTZ(tz);
         setQuietCount(
           (r.ops ?? []).filter((o) => {
             if (o.actor !== 'agent') return false;
-            const at = new Date(o.createdAt);
-            return at.getFullYear() + '-' + p2(at.getMonth() + 1) + '-' + p2(at.getDate()) === today;
+            return api.dayIsoInTZ(new Date(o.createdAt), tz) === today;
           }).length,
         );
       },
@@ -489,6 +488,7 @@ export function App({ boot }: { boot: Boot }) {
           <PeekSheet
             t={t}
             s={s}
+            tz={tz}
             onLedger={() => setSheet('ledger')}
             onOutlook={() => setSheet('outlook')}
             onClose={() => setSheet(null)}

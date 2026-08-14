@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as api from '@daycore/core';
 import type { Assignment, Catalog, Course, OperationLog, Proposal, Wish } from '@daycore/core';
-import { nowMin, toMin } from './flow';
+import { toMin } from './flow';
 import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import type { Store } from './store';
@@ -65,17 +65,20 @@ function Frame({ title, icon, onClose, children }: { title: string; icon: IconNa
 export function PeekSheet({
   t,
   s,
+  tz,
   onLedger,
   onOutlook,
   onClose,
 }: {
   t: Catalog['t'];
   s: Store;
+  /** 会话时区（空=浏览器本地）——现在线与日期头都跟它走。 */
+  tz: string;
   onLedger: () => void;
   onOutlook: () => void;
   onClose: () => void;
 }) {
-  const now = nowMin();
+  const now = s.tick;
   const blocks = (s.plan?.blocks ?? [])
     .filter((b) => !b.hidden && b.time !== null)
     .sort((a, b) => toMin(a.time ?? '0') - toMin(b.time ?? '0'));
@@ -128,9 +131,9 @@ export function PeekSheet({
               // 原型是「8月14日 周五」：月日一段、星期一段，中间空格 —— 一次
               // Intl 调用在 zh 下不会带这个空格，两段拼。
               date:
-                new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long', day: 'numeric' }).format(new Date()) +
+                new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long', day: 'numeric', ...(tz ? { timeZone: tz } : {}) }).format(new Date()) +
                 ' ' +
-                new Intl.DateTimeFormat(document.documentElement.lang || undefined, { weekday: 'short' }).format(new Date()),
+                new Intl.DateTimeFormat(document.documentElement.lang || undefined, { weekday: 'short', ...(tz ? { timeZone: tz } : {}) }).format(new Date()),
             })}
           </span>
           <span className="tg-phint">{t('peek.title')}</span>
