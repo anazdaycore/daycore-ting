@@ -141,5 +141,6 @@
   "undo.accepted": "Accepted: {title}",
   "undo.rejected": "Dismissed: {title}",
   "boot.tooOld": "This backend is too old — it reports API version {version}.",
-  "setting.langHint": "Which language for now? Once connected, the backend may offer more."
+  "setting.langHint": "Which language for now? Once connected, the backend may offer more.",
+  "setting.demoHint": "Demo data: press \"Try it\" (leave the address empty), then open the console with F12, paste the demo token, and reload to see the sample data."
 }

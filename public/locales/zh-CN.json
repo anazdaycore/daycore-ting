@@ -141,5 +141,6 @@
   "undo.accepted": "接受：{title}",
   "undo.rejected": "推开：{title}",
   "boot.tooOld": "这个后端太旧了，它报的 API 版本是 {version}。",
-  "setting.langHint": "先用哪种语言？连上后端之后，它有的语言会更多。"
+  "setting.langHint": "先用哪种语言？连上后端之后，它有的语言会更多。",
+  "setting.demoHint": "演示数据：点「试一下」（地址留空）进入后，按 F12 打开控制台贴入演示 token，刷新即可看到示例数据。"
 }
