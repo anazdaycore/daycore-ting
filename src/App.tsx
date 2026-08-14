@@ -415,17 +415,22 @@ export function App({ boot }: { boot: Boot }) {
               <span>{t(prop ? 'swipe.accept' : 'swipe.complete')}</span>
             </div>
           )}
-          {(prop || cur) && (
-            <div className="tg-keyhint" style={{ margin: '0 auto' }}>
-              <kbd>↵</kbd>
-              {t('keyhint.accept')}
-              <kbd>esc</kbd>
-              {t('keyhint.reject')}
-              <kbd>↓</kbd>
-              {t('keyhint.peek')}
-            </div>
-          )}
         </div>
+
+        {(prop || cur) && (
+          // ⚠️ Must sit OUTSIDE .tg-main: that container is position:relative and
+          // only as tall as the face, so bottom:86px landed the hint row on top
+          // of the proposal card's own buttons. Anchored to .tg-app it floats
+          // above the next-bar, where the keyboard driver actually looks.
+          <div className="tg-keyhint">
+            <kbd>↵</kbd>
+            {t('keyhint.accept')}
+            <kbd>esc</kbd>
+            {t('keyhint.reject')}
+            <kbd>↓</kbd>
+            {t('keyhint.peek')}
+          </div>
+        )}
 
         {s.flow.next && (
           <div className="tg-next" onClick={() => setSheet('peek')}>
