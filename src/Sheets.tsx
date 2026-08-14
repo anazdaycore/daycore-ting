@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import * as api from '@daycore/core';
 import type { Assignment, Catalog, OperationLog, Proposal, Wish } from '@daycore/core';
 import { nowMin, toMin } from './flow';
+import { Icon } from './Icon';
+import type { IconName } from './Icon';
 import type { Store } from './store';
 
 // The four pull-out surfaces of 汀: the day's mini axis (peek), the ledger,
@@ -25,13 +27,21 @@ function fmtClock(min: number): string {
   return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
 }
 
-function Frame({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Frame({ title, icon, onClose, children }: { title: string; icon: IconName; onClose: () => void; children: React.ReactNode }) {
   return (
     <>
       <div className="tg-veil" onClick={onClose} />
       <div className="tg-sheet" role="dialog" aria-label={title}>
         <div className="tg-shead">
-          <h3>{title}</h3>
+          <h3>
+            <span className="ic">
+              <Icon n={icon} />
+            </span>
+            {title}
+          </h3>
+          <button className="tg-dots" onClick={onClose} aria-label={title}>
+            <Icon n="x" size={16} />
+          </button>
         </div>
         <div className="tg-sbody">{children}</div>
       </div>
@@ -148,7 +158,7 @@ export function LedgerSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onCl
   };
   let lastDay = '';
   return (
-    <Frame title={t('peek.ledger')} onClose={onClose}>
+    <Frame title={t('peek.ledger')} icon="undo" onClose={onClose}>
       {ops === null && <p className="tg-note">{t('capture.parsing')}</p>}
       {ops !== null && ops.length === 0 && <p className="tg-note">{t('ledger.empty')}</p>}
       {(ops ?? []).map((op) => {
@@ -202,7 +212,7 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
     );
   };
   return (
-    <Frame title={t('peek.outlook')} onClose={onClose}>
+    <Frame title={t('peek.outlook')} icon="zap" onClose={onClose}>
       <div className="tg-cap">{t('outlook.radar')}</div>
       {items === null && <p className="tg-note">{t('capture.parsing')}</p>}
       {items !== null && items.length === 0 && <p className="tg-note">{t('outlook.empty')}</p>}
@@ -227,7 +237,9 @@ export function OutlookSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onC
       {wishes !== null && wishes.length === 0 && <p className="tg-note">{t('outlook.wishEmpty')}</p>}
       {(wishes ?? []).map((w) => (
         <div key={w.id} className="tg-li">
-          <span style={{ color: 'var(--tg-warm)', marginTop: 3 }}>★</span>
+          <span style={{ color: 'var(--tg-warm)', marginTop: 3, display: 'inline-flex' }}>
+            <Icon n="star" size={14} />
+          </span>
           <div className="bd">
             <div className="lb">{w.title}</div>
             <div className="sb">{w.effortMin ? t('outlook.wishEffort', { n: w.effortMin }) : ''}</div>
@@ -253,7 +265,7 @@ export function MoodSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onClos
     void api.moodKinds().then((r) => setKinds(r.kinds ?? []), () => setKinds([]));
   }, []);
   return (
-    <Frame title={t('mood.title')} onClose={onClose}>
+    <Frame title={t('mood.title')} icon="smile" onClose={onClose}>
       {kinds === null && <p className="tg-note">{t('capture.parsing')}</p>}
       <div className="tg-moodrow">
         {(kinds ?? []).map((k) => (
@@ -283,7 +295,7 @@ export function MoodSheet({ t, s, onClose }: { t: Catalog['t']; s: Store; onClos
  *  at the companion elsewhere, exactly as the prototype does. */
 export function WhySheet({ t, p, onClose }: { t: Catalog['t']; p: Proposal; onClose: () => void }) {
   return (
-    <Frame title={t('why.title')} onClose={onClose}>
+    <Frame title={t('why.title')} icon="eye" onClose={onClose}>
       <div className="tg-cap">{p.title}</div>
       {p.reason && <p className="tg-note">{p.reason}</p>}
       {p.evidence && <p className="tg-note">{p.evidence}</p>}

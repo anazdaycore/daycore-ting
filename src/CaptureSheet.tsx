@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import * as api from '@daycore/core';
+import { Icon } from './Icon';
 import type { Catalog, TimeBlock } from '@daycore/core';
 
 // 说一句 — the capture capsule's sheet. Free text goes to plan-text; what comes
@@ -78,7 +79,15 @@ export function CaptureSheet({
       <div className="tg-veil" onClick={onClose} />
       <div className="tg-sheet" role="dialog" aria-label={t('capture.title')}>
         <div className="tg-shead">
-          <h3>{t('capture.title')}</h3>
+          <h3>
+            <span className="ic">
+              <Icon n="chat" />
+            </span>
+            {t('capture.title')}
+          </h3>
+          <button className="tg-dots" onClick={onClose} aria-label={t('peek.close')}>
+            <Icon n="x" size={16} />
+          </button>
         </div>
         <div className="tg-sbody">
           {phase !== 'candidates' ? (
@@ -101,7 +110,7 @@ export function CaptureSheet({
                   aria-label={t('capture.send')}
                   onClick={() => void submit()}
                 >
-                  ↑
+                  <Icon n="send" size={17} />
                 </button>
               </div>
               <div className="tg-quick">

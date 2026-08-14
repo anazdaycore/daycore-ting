@@ -1,4 +1,5 @@
 import type { Catalog, TimeBlock } from '@daycore/core';
+import { Icon } from './Icon';
 import type { Store } from './store';
 
 // 没做 / 换一个… — the way OUT of the current block. Every dead end here gets a
@@ -13,7 +14,15 @@ export function ActSheet({ t, s, block, onClose }: { t: Catalog['t']; s: Store; 
       <div className="tg-veil" onClick={onClose} />
       <div className="tg-sheet" role="dialog" aria-label={block.title}>
         <div className="tg-shead">
-          <h3>{block.title}</h3>
+          <h3>
+            <span className="ic">
+              <Icon n="clock" />
+            </span>
+            {block.title}
+          </h3>
+          <button className="tg-dots" onClick={onClose} aria-label={t('peek.close')}>
+            <Icon n="x" size={16} />
+          </button>
         </div>
         <div className="tg-sbody">
           <button

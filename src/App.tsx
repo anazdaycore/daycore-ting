@@ -5,6 +5,7 @@ import { MenuSheet } from './MenuSheet';
 import { CaptureSheet } from './CaptureSheet';
 import { ActSheet } from './ActSheet';
 import { LedgerSheet, MoodSheet, OutlookSheet, PeekSheet, WhySheet } from './Sheets';
+import { Icon } from './Icon';
 import { applyTheme } from './theme';
 import * as api from '@daycore/core';
 import type { Boot, CustomTheme } from '@daycore/core';
@@ -192,10 +193,10 @@ export function App({ boot }: { boot: Boot }) {
             {t('top.doneCount', { done: s.flow.doneCount, total: s.flow.total })}
           </button>
           <button className="tg-dots" onClick={() => setSheet('mood')} aria-label={t('mood.open')}>
-            ☺
+            <Icon n="smile" size={17} />
           </button>
           <button className="tg-dots" onClick={() => setSheet('menu')} aria-label={t('menu.open')}>
-            ···
+            <Icon n="dots" size={18} />
           </button>
         </header>
 
@@ -218,8 +219,13 @@ export function App({ boot }: { boot: Boot }) {
                 )}
               </div>
               <h1 className="tg-title md">{prop.title}</h1>
-              {prop.summary && <p className="tg-sub">{prop.summary}</p>}
-              {prop.reason && <p className="why">{prop.reason}</p>}
+              {(prop.summary || prop.reason) && (
+                <p className="why">
+                  {prop.summary}
+                  {prop.summary && prop.reason ? '——' : ''}
+                  {prop.reason ?? ''}
+                </p>
+              )}
               {prop.start && (
                 <div className="tg-metarow">
                   <span>
@@ -228,7 +234,28 @@ export function App({ boot }: { boot: Boot }) {
                   </span>
                 </div>
               )}
-              {prop.evidence && <div className="ev">👁 {prop.evidence}</div>}
+              {prop.evidence && (
+                <div className="ev">
+                  <Icon n="eye" size={12} />
+                  {prop.evidence}
+                </div>
+              )}
+              {prop.rows?.length ? (
+                <div className="tg-rows">
+                  {prop.rows.map((row) => (
+                    <div key={row.id} className={'tg-row' + (row.state === 'accepted' ? ' acc' : row.state === 'rejected' ? ' rej' : '')}>
+                      <span className="lb">{row.label}</span>
+                      {/* ⚠️ The wire can accept one row (choice=rowID, the others
+                          settle as rejected) or reject the whole card — there is
+                          no per-row reject. So each row gets the round ✓ only;
+                          "no to all of them" is the card-level 推开 below. */}
+                      <button className="rb y" disabled={s.busy} aria-label={row.label} onClick={() => void s.take(prop, row.id)}>
+                        <Icon n="check" size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="tg-actrow">
                 {/* ⚠️ A compound card is a menu, and 汀's gestures cannot express
                     "which row" — a swipe is one bit. So the rows are buttons and
@@ -236,16 +263,7 @@ export function App({ boot }: { boot: Boot }) {
                     below); rejecting stays available either way, because "no" is
                     unambiguous whatever the card's shape. */}
                 {prop.rows?.length
-                  ? prop.rows.map((row) => (
-                      <button
-                        key={row.id}
-                        className="tg-btn pri"
-                        disabled={s.busy}
-                        onClick={() => void s.take(prop, row.id)}
-                      >
-                        {row.label}
-                      </button>
-                    ))
+                  ? null
                   : (
                       <button className="tg-btn pri" disabled={s.busy} onClick={() => void s.answer(prop, true)}>
                         {t('prop.accept')}
@@ -285,6 +303,7 @@ export function App({ boot }: { boot: Boot }) {
                   })}
                 </span>
                 <i className="ln" />
+                {cur.duration_min ? <span className="tg-qbadge">{progressPct(cur, clock)}%</span> : null}
               </div>
               <h1 className="tg-title">{cur.title}</h1>
               {cur.note && <p className="tg-note">“{cur.note}”</p>}
@@ -390,7 +409,9 @@ export function App({ boot }: { boot: Boot }) {
           )}
           <div className="tg-caps" onClick={() => setSheet('capture')}>
             {t('caps.hint')}
-            <span className="mic">✎</span>
+            <span className="mic">
+              <Icon n="chat" size={16} />
+            </span>
           </div>
         </footer>
         {sheet === 'menu' && (
