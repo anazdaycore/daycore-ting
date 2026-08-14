@@ -209,7 +209,7 @@ input{font:inherit;color:inherit}
 .tg-sidecue{font-size:13px}
 .tg-undo{top:22px}
 .tg-swipehint .up{display:none}
-.tg-keyhint{display:flex}
+.tg-keyhint{display:flex;bottom:150px}
 }
 .tg-title.sm{font-size:26px}
 .tg-title.md{font-size:28px}
