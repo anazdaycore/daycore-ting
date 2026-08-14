@@ -5,6 +5,24 @@ import { Icon } from './Icon';
 // The menu sheet — 汀's only settings surface. The prototype keeps it to three
 // things: the water (theme), the language, and what 汀 is. That economy is the
 // point of this end; everything else lives in the peek or the ledger.
+/** 主题名的完整字面量表：汀的水色 seg 只渲染夜汀/晨汀两个，但后端内置主题
+ *  是 sky/sunset/night/nature 四个——会话带着其中任何一个进来时，seg 通过
+ *  themeAttribute 落灯到等效水色，名字也得有处可寻（后端 theme 测试要求每
+ *  个内置 id 在语言包里有名，这里的三元链同时满足 i18n 门的字面量要求）。 */
+function themeLabel(t: Catalog['t'], id: string): string {
+  return id === 'night'
+    ? t('theme.night')
+    : id === 'dawn'
+      ? t('theme.dawn')
+      : id === 'sky'
+        ? t('theme.sky')
+        : id === 'sunset'
+          ? t('theme.sunset')
+          : id === 'nature'
+            ? t('theme.nature')
+            : id;
+}
+
 export function MenuSheet({
   t,
   themeId,
@@ -49,7 +67,7 @@ export function MenuSheet({
           <div className="tg-seg">
             {BUILTIN_THEMES.map((id) => (
               <button key={id} className={segOn === id ? 'on' : ''} onClick={() => onTheme(id)}>
-                {t(id === 'night' ? 'theme.night' : 'theme.dawn')}
+                {themeLabel(t, id)}
               </button>
             ))}
           </div>
