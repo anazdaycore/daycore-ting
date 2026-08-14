@@ -362,6 +362,10 @@ export function WhySheet({ t, p, onClose }: { t: Catalog['t']; p: Proposal; onCl
       {p.evidence && <p className="tg-note">{p.evidence}</p>}
       {!p.reason && !p.evidence && <p className="tg-note">{t('why.empty')}</p>}
       <p className="tg-note">{t('why.note')}</p>
+      {/* 四端同源共部署（hub 同站）——「去伙伴聊」可以是真链接，不必只是指路文案。 */}
+      <div className="tg-actrow">
+        <a className="tg-btn sec" href="/liuli/">{t('why.go')}</a>
+      </div>
     </Frame>
   );
 }

@@ -117,6 +117,7 @@
   "setting.language": "Language",
   "top.l0": "Quietly did {n} for you",
   "prop.revisit": "Take another look",
+  "why.go": "Continue in Liuli →",
   "menu.account": "Account",
   "auth.anon": "Anonymous session",
   "auth.anonSub": "Data lives on this device; sign in to sync across devices.",
