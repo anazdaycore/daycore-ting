@@ -116,7 +116,7 @@ export function PeekSheet({
           <span className="tg-pdate">
             <Icon n="calendar" size={13} />
             {t('peek.dayline', {
-              date: new Intl.DateTimeFormat(undefined, { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date()),
+              date: new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'numeric', day: 'numeric', weekday: 'short' }).format(new Date()),
             })}
           </span>
           <span className="tg-phint">{t('peek.title')}</span>
