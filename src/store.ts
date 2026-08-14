@@ -78,6 +78,8 @@ export interface Store {
   /** 先不看 — hide every pending card for this session. A client-side hide,
    *  NOT a rejection: silence must never settle anything, so nothing is sent. */
   skipAll: () => void;
+  skippedCount: number;
+  unskipAll: () => void;
   clearGate: () => void;
   takeBack: () => Promise<void>;
   dismissUndo: () => void;
@@ -426,6 +428,9 @@ export function useStore(cat: Catalog): Store {
     conflict,
     recordMood,
     skipAll: () => setSkipped((prev) => new Set([...prev, ...proposals.map((p) => p.id)])),
+    // 「先不看」永远可回身——跳过的提案不清数据，只从队列里隐身，unskipAll 一键唤回。
+    skippedCount: skipped.size,
+    unskipAll: () => setSkipped(new Set()),
     clearGate: () => setGate(null),
     takeBack,
     dismissUndo: () => setUndo(null),

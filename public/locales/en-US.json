@@ -116,6 +116,7 @@
   "setting.notDaycore": "Reached it, but it doesn't look like a Daycore backend: ",
   "setting.language": "Language",
   "top.l0": "Quietly did {n} for you",
+  "prop.revisit": "Take another look",
   "menu.account": "Account",
   "auth.anon": "Anonymous session",
   "auth.anonSub": "Data lives on this device; sign in to sync across devices.",

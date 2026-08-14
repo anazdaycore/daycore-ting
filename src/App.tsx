@@ -374,6 +374,11 @@ export function App({ boot }: { boot: Boot }) {
                 <button className="tg-btn pri" onClick={() => setSheet('capture')}>
                   {t('caps.say')}
                 </button>
+                {s.skippedCount > 0 && (
+                  <button className="tg-btn sec" onClick={() => s.unskipAll()}>
+                    {t('prop.revisit')}
+                  </button>
+                )}
               </div>
             </div>
           ) : s.flow.nextTomorrow ? (
@@ -390,6 +395,11 @@ export function App({ boot }: { boot: Boot }) {
                 <button className="tg-btn pri" onClick={() => setSheet('capture')}>
                   {t('caps.say')}
                 </button>
+                {s.skippedCount > 0 && (
+                  <button className="tg-btn sec" onClick={() => s.unskipAll()}>
+                    {t('prop.revisit')}
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -406,6 +416,11 @@ export function App({ boot }: { boot: Boot }) {
                 <button className="tg-btn pri" onClick={() => setSheet('capture')}>
                   {t('caps.say')}
                 </button>
+                {s.skippedCount > 0 && (
+                  <button className="tg-btn sec" onClick={() => s.unskipAll()}>
+                    {t('prop.revisit')}
+                  </button>
+                )}
               </div>
             </div>
           )}
