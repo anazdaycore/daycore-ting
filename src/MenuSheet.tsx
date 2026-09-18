@@ -114,6 +114,46 @@ function themeLabel(t: Catalog['t'], id: string): string {
             : id;
 }
 
+/** 导入令牌：浏览器插件用它把 Canvas 数据直推过来。自成一块，不碰菜单自己的状态。 */
+function ImportTokenBlock({ t }: { t: (k: string) => string }) {
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    void api.importToken().then((r) => setToken(r.token ?? ''), () => { /* 读不到就显示未生成 */ });
+  }, []);
+  const rotate = () => {
+    setBusy(true);
+    void api.rotateImportToken().then(
+      (r) => { setToken(r.token ?? ''); setBusy(false); },
+      () => setBusy(false),
+    );
+  };
+  const copy = () => {
+    void navigator.clipboard.writeText(token).then(
+      () => { setCopied(true); window.setTimeout(() => setCopied(false), 1600); },
+      () => { /* 剪贴板不可用（非安全上下文）时令牌仍可手动选中 */ },
+    );
+  };
+  return (
+    <>
+      <div className="tg-cap">{t('menu.import')}</div>
+      <p className="tg-note" style={{ marginBottom: 8 }}>{t('menu.tokenDesc')}</p>
+      <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <code style={{ flex: '1 1 150px', fontSize: 11.5, color: 'var(--tg-ink2)', borderRadius: 8, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {token || t('menu.tokenNone')}
+        </code>
+        <button className="tg-btn sec" disabled={busy} onClick={rotate}>
+          {token ? t('menu.tokenRotate') : t('menu.tokenGenerate')}
+        </button>
+        {token !== '' && (
+          <button className="tg-btn sec" onClick={copy}>{copied ? t('menu.tokenCopied') : t('menu.tokenCopy')}</button>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function MenuSheet({
   t,
   themeId,
@@ -212,6 +252,7 @@ export function MenuSheet({
               </option>
             ))}
           </select>
+          <ImportTokenBlock t={t} />
           <p className="tg-note">{t('menu.tagline')}</p>
           </>
           )}
